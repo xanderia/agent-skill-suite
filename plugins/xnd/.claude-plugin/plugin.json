@@ -1,0 +1,13 @@
+{
+    "name": "xnd",
+    "description": "🦁 XANDERIA Knowledge Base — portable OKF bundle maintenance, deep codebase review, and plugin lifecycle skills.",
+    "version": "0.1.0",
+    "author":
+    {
+        "name": "Alex Grafe",
+        "url": "https://xanderia.one"
+    },
+    "homepage": "https://github.com/xanderia/agent-skill-suite",
+    "repository": "https://github.com/xanderia/agent-skill-suite",
+    "license": "MIT"
+}

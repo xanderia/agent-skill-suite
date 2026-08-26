@@ -1,0 +1,16 @@
+{
+    "name": "agent-skill-suite",
+    "owner":
+    {
+        "name": "XANDERIA",
+        "url": "https://xanderia.one"
+    },
+    "plugins":
+    [
+        {
+            "name": "xnd",
+            "source": "./plugins/xnd",
+            "description": "🦁 XANDERIA Knowledge Base — portable OKF bundle maintenance, deep codebase review, and plugin lifecycle skills."
+        }
+    ]
+}
