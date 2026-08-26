@@ -14,9 +14,17 @@ questions the first time, then gets out of your way.
 
 | Skill | What it does |
 | :--- | :--- |
+| **`/xnd:kb-*`** — your knowledge base | |
 | `/xnd:kb-update` | Sets up a knowledge base, or keeps an existing one healthy — tracks changes to the OKF spec, migrates your files to match, re-verifies your third-party reference docs against upstream, splits files that grew too big, sharpens summaries, and regenerates every index |
-| `/xnd:review` | Reads your whole project — documentation *and* substance — cross-references the two, and writes a dated report: what's strong, what drifted, what to do next |
+| | |
+| **`/xnd:project-*`** — your whole project | |
+| `/xnd:project-review` | Reads your whole project — documentation *and* substance — cross-references the two, and writes a dated report: what's strong, what drifted, what to do next |
+| | |
+| **`/xnd:plugin-*`** — this plugin itself | |
 | `/xnd:plugin-uninstall` | Cleanly removes everything it added. Dry run first, confirmation before anything is touched, and your writing always stays put |
+
+Skills are grouped by namespace, so `/xnd:` plus a prefix tells you what a skill acts on before you
+read a word of its description.
 
 ## Get started
 
@@ -52,7 +60,7 @@ They're independent, which is what makes the same plugin fit very different proj
 usually keeps its knowledge in a `Notes/` folder and sets both there. A writing project sets
 `okf_root: "/"` — because *everything* is the knowledge — while keeping `Notes/` for the machinery.
 
-`/xnd:review` reads one more file, `ReviewConfiguration.md`, where you declare what a good review
+`/xnd:project-review` reads one more file, `ReviewConfiguration.md`, where you declare what a good review
 looks like *for you*: which dimensions matter, what order to read things in, which conventions to
 hold the project to. A software project might ask for type-system health and secret hygiene; a novel
 might ask whether the prose holds its voice.

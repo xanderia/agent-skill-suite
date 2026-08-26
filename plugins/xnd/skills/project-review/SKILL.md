@@ -1,5 +1,5 @@
 ---
-name: review
+name: project-review
 description: Deep holistic project review — reads all documentation and all source, cross-references them, and writes a dated review report covering architecture, accuracy, debt, knowledge-bundle health and prioritized next steps
 user-invocable: true
 ---

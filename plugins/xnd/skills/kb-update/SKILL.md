@@ -117,7 +117,7 @@ Ask whether a conformance CLI is available (for XANDERIA: `xnd notes verify`).
 
 - `{OKF_Root}/_Archive_` — superseded documents
 - `{Metadata_Dir}/_Plans_` — active plans and task lists
-- `{Metadata_Dir}/_Plans_/_ReviewReports_` — output of `/xnd:review`
+- `{Metadata_Dir}/_Plans_/_ReviewReports_` — output of `/xnd:project-review`
 - `{Metadata_Dir}/_Plans_/_Archive_` — superseded plans
 
 Each created folder gets an `index.md`.
@@ -132,7 +132,7 @@ Each created folder gets an `index.md`.
    > folder, several files) or **complex** (sub-folders per separable vendor sub-service or
    > component). Pre-evaluate which fits the subject and mark that one `(recommended)`.
 
-3. A starter `{Metadata_Dir}/ReviewConfiguration.md` for `/xnd:review` to consume.
+3. A starter `{Metadata_Dir}/ReviewConfiguration.md` for `/xnd:project-review` to consume.
 4. Vendor the spec (see [Phase 1](#phase-1--spec-drift)).
 
 Then run the maintain flow.
