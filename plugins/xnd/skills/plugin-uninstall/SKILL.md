@@ -21,14 +21,19 @@ at once — say so plainly at the start.
 ## Step 1 — Take stock
 
 1. Read the config from `{Metadata_Dir}/index.md` frontmatter and the `<!-- okf:installed -->` marker
-   in `CLAUDE.md`. If neither exists, say the plugin was never installed here and stop.
+   in `CLAUDE.md`. **Read `CLAUDE.md` from disk with the Read tool** — block-level HTML comments are
+   stripped before a `CLAUDE.md` reaches the model, so checking context alone reports "not installed"
+   for a perfectly good install. The `@…/base-prompt.md` import line is the visible counterpart.
+   If neither marker nor config exists, say the plugin was never installed here and stop.
 2. Check whether the working tree is clean. If it is dirty, say so and recommend committing first —
    git is the only undo.
 3. Inventory what exists:
    - concept files carrying frontmatter, grouped by folder, with counts
    - folders this plugin creates (`_Archive_`, `_Plans_`, `_Plans_/_ReviewReports_`,
-     `_Plans_/_Archive_`) and whether each holds content the human wrote
-   - the `CLAUDE.md` section
+     `_Plans_/_Archive_`, `_Workflows_/knowledge-base`) and whether each holds content the human wrote
+   - the `CLAUDE.md` anchor section **and** the base prompt it imports (`okf_base_prompt`) — these are
+     one unit: removing the anchor while leaving the file orphans it, and removing the file while
+     leaving the anchor leaves a broken import in the human's `CLAUDE.md`
    - the config frontmatter itself
 
 
@@ -42,7 +47,9 @@ Use the AskUser tool. **Never assume "uninstall" means "remove everything".**
 2. **Folders** — which of the created folders to delete, **one entry per folder**, each stating what
    it currently contains. A folder holding the human's own plans or reports must be marked
    `(contains your work)` and must never be pre-selected.
-3. **The `CLAUDE.md` section** — remove, or keep as documentation?
+3. **The `CLAUDE.md` anchor and its base prompt** — remove both, or keep the base prompt as ordinary
+   documentation and drop only the import? Offer inlining the base prompt back into `CLAUDE.md` as a
+   third option: it is what a human who wants the guidance but not the plugin usually means.
 4. **The config frontmatter** in `{Metadata_Dir}/index.md` — remove, or keep so a future reinstall
    remembers the settings?
 
@@ -54,7 +61,7 @@ Show exactly what *would* happen before anything happens:
 - a per-file diff of frontmatter removal (or a representative sample plus a total, when it runs to
   many files)
 - the full list of folders and files that would be deleted
-- the `CLAUDE.md` diff
+- the `CLAUDE.md` diff, and the fate of the base prompt file
 
 Then ask for a final confirmation. **Anything other than a clear yes stops the run.** If they decline,
 say nothing was touched and offer to narrow the selection.
@@ -79,7 +86,8 @@ Warm, joyous, plain. Then a table, because the point is that they can see exactl
 | `Notes/Client/` | Frontmatter removed | 23 files |
 | `Notes/_Plans_/` | **Kept** | Your plans are still here |
 | `Notes/_Plans_/_ReviewReports_/` | **Kept** | 2 reports preserved |
-| `CLAUDE.md` section | Removed | — |
+| `CLAUDE.md` anchor | Removed | — |
+| Base prompt (`okf_base_prompt`) | Removed / inlined / kept | — |
 | Config frontmatter | **Kept** | A reinstall will remember your settings |
 
 Close with:

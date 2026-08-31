@@ -28,11 +28,18 @@ This skill's instructions were written against OKF spec commit **`62432a09`** (2
 
 ## Step 0 — Resolve configuration
 
-1. **Look for the install marker** in the project's `CLAUDE.md` (or `AGENTS.md` if no `CLAUDE.md`):
+1. **Read `CLAUDE.md` from disk** (or `AGENTS.md` if no `CLAUDE.md`) with the Read tool, and look for
+   the install marker:
 
    ```
    <!-- okf:installed -->
    ```
+
+   > ⚠️ **Read the file; do not trust context.** Block-level HTML comments are stripped from a
+   > `CLAUDE.md` before it reaches the model, so the marker is invisible in your context even when it
+   > is present on disk. Deciding from context alone yields a false negative and a destructive
+   > re-install over a working setup. The `@…/base-prompt.md` import line *is* visible in context —
+   > which is why it doubles as the marker.
 
    - **Marker absent** → run [Install](#install-flow-first-run-only).
    - **Marker present** → run [Maintain](#maintain-flow), silently, without re-asking anything.
@@ -54,6 +61,7 @@ This skill's instructions were written against OKF spec commit **`62432a09`** (2
    | `okf_immutable` | Glob patterns never to edit |
    | `okf_generated` | Files linted but never content-edited |
    | `okf_skill_source` | Path to this suite's own source, when the project vendors it — enables [Phase 1b](#phase-1b--self-update). Absent → report needed changes, never self-edit |
+   | `okf_base_prompt` | Path to the always-loaded base prompt `CLAUDE.md` imports. Default `{Metadata_Dir}/_Workflows_/knowledge-base/base-prompt.md` |
    | `kb_title` | Prose title for reports |
 
    **`okf_root` and `okf_metadata_dir` are independent.** They are often the same directory, but must
@@ -126,26 +134,89 @@ Ask whether a conformance CLI is available (for XANDERIA: `xnd notes verify`).
 - `{Metadata_Dir}/_Plans_` — active plans and task lists
 - `{Metadata_Dir}/_Plans_/_ReviewReports_` — output of `/xnd:project-review`
 - `{Metadata_Dir}/_Plans_/_Archive_` — superseded plans
+- `{Metadata_Dir}/_Workflows_/knowledge-base` — holds the base prompt `CLAUDE.md` imports
+  (kebab-case regardless of `okf_case_folders`; see [Anchor constraints](#anchor-constraints))
 
 Each created folder gets an `index.md`.
 
 ### 7. Write the install artifacts
 
 1. Config frontmatter into `{Metadata_Dir}/index.md`.
-2. The `# Knowledge Base` section into `CLAUDE.md`, containing the `<!-- okf:installed -->` marker,
-   the resolved config, the verifier instruction, the naming conventions, and this rule:
+2. **The base prompt** at `okf_base_prompt` — a normal concept document (full frontmatter, listed in
+   its directory's `index.md`) carrying the resolved config, the verifier instruction, the naming
+   conventions, the immutable-zone and archiving rules, and this rule:
 
    > **Adding a knowledge base.** When asked to add a KB, ask whether it should be **simple** (one
    > folder, several files) or **complex** (sub-folders per separable vendor sub-service or
    > component). Pre-evaluate which fits the subject and mark that one `(recommended)`.
 
-3. A starter `{Metadata_Dir}/ReviewConfiguration.md` for `/xnd:project-review` to consume.
-4. Vendor the spec (see [Phase 1](#phase-1--spec-drift)).
+3. **The anchor** in `CLAUDE.md` — a short section, nothing more:
+
+   ```markdown
+   # {kb_title}
+
+   <!-- okf:installed — managed by /xnd:kb-update; edit the imported file, not this block. -->
+
+   The operating instructions for the `{Metadata_Dir}/` bundle are imported here:
+
+   @{okf_base_prompt}
+   ```
+
+   See [Anchor constraints](#anchor-constraints) before writing it — the import path has rules.
+
+4. A starter `{Metadata_Dir}/ReviewConfiguration.md` for `/xnd:project-review` to consume.
+5. Vendor the spec (see [Phase 1](#phase-1--spec-drift)).
 
 Then run the maintain flow.
 
 
 ## Maintain flow
+
+### Phase 0 — Verify the installation
+
+Runs first on every maintain run. It is cheap, and everything after it assumes the install is sound.
+
+1. **Read `CLAUDE.md` from disk** (see the warning in [Step 0](#step-0--resolve-configuration) — the
+   marker is invisible from context).
+2. **Identify the shape:**
+   - **Anchored** (current) — a heading, a marker comment, one sentence, and an
+     `@…/base-prompt.md` import line.
+   - **Inline** (legacy) — the section carries the full instruction text directly.
+   - **Absent** — run [Install](#install-flow-first-run-only) instead.
+3. **Migrate inline → anchored.** Move the section body verbatim into `okf_base_prompt`; add
+   frontmatter (a `type` from `okf_types`, a `description`, `generated`); **rebase every relative link
+   in the moved text** — the content dropped several directories, so a root-relative `Notes/x.md`
+   becomes `../../x.md`, and every link that resolved from the repo root needs one `../` per level;
+   list it in its directory's `index.md`; then replace the `CLAUDE.md` section with the anchor. Report
+   the migration — it rewrites a file the human owns.
+4. **Repair the anchor** if it drifted: heading, marker comment, one-line explanation, import line,
+   and the import target actually existing.
+5. **Reconcile the base prompt against the config.** Everything it quotes — naming case, date format,
+   verifier command, immutable zones, type vocabulary — must match `{Metadata_Dir}/index.md`
+   frontmatter. It is generated content: rewrite it, do not patch around it.
+
+#### Anchor constraints
+
+Four rules, each with a failure mode worth naming:
+
+1. **No spaces in the import path.** `@path` has no quoting or escaping mechanism and whitespace
+   terminates the path, so `@Notes/_Workflows_/Knowledge Base/base-prompt.md` silently imports
+   nothing. The workflow directory is therefore **kebab-case even in a Title-Case project** — exactly
+   the "awkward to type or quote" exception the naming rule already carves out.
+2. **The import line is the marker.** HTML comments are stripped from context, so a comment-only
+   marker is invisible to an agent that has not read the file from disk. Keep the comment for humans
+   reading the file; rely on the import line for everything else.
+3. **Externalizing does not save context.** An imported file is expanded into the context window at
+   launch exactly as if it had been pasted inline. The reason to do this is **atomicity** — the skill
+   owns a whole file it can regenerate, instead of surgically rewriting the human's most important
+   file — not token savings. Keep the base prompt short on its own merits; if the goal is a smaller
+   context, *cut* content, do not move it.
+4. **Imports resolve relative to the file containing them** and nest at most four hops. Do not chain
+   base prompts.
+
+Where the host does not support `@` imports, write the anchor with a plain relative markdown link and
+one line saying the file must be read first. The content still lives in one regenerable place; only
+the automatic loading is lost.
 
 ### Phase 1 — Spec drift
 
