@@ -20,6 +20,12 @@ This skill is **project-agnostic**. Every project-specific rule lives in that pr
 in this file. Read the config first; assume nothing.
 
 
+## Spec baseline
+
+This skill's instructions were written against OKF spec commit **`62432a09`** (2026-08-21).
+[Phase 1b](#phase-1b--self-update) updates this line when the spec moves.
+
+
 ## Step 0 — Resolve configuration
 
 1. **Look for the install marker** in the project's `CLAUDE.md` (or `AGENTS.md` if no `CLAUDE.md`):
@@ -47,6 +53,7 @@ in this file. Read the config first; assume nothing.
    | `okf_tags` | The project's tag vocabulary |
    | `okf_immutable` | Glob patterns never to edit |
    | `okf_generated` | Files linted but never content-edited |
+   | `okf_skill_source` | Path to this suite's own source, when the project vendors it — enables [Phase 1b](#phase-1b--self-update). Absent → report needed changes, never self-edit |
    | `kb_title` | Prose title for reports |
 
    **`okf_root` and `okf_metadata_dir` are independent.** They are often the same directory, but must
@@ -165,10 +172,37 @@ Then run the maintain flow.
    - **immutable-zone-aware** — see [hard rules](#hard-rules).
 7. Set `okf_spec_sha` to the new SHA.
 
+### Phase 1b — Self-update
+
+A spec change that this skill's own instructions contradict does not merely leave the skill outdated —
+it makes it **actively wrong**, because it will keep migrating files toward a rule that no longer
+exists. The skill is therefore part of what Phase 1 migrates.
+
+Read `okf_skill_source`.
+
+- **Absent** — the normal case: the plugin is installed read-only from a marketplace. Write the needed
+  changes into the Phase 7 report under *What needs you*, quoting the spec passage and naming the file
+  and section. Never edit an installed plugin in place.
+- **Set** — the project vendors this suite as source. Update it, bounded to exactly four things:
+  1. **Spec facts** — field names, vocabularies, required/optional status, version strings, and every
+     frontmatter example that the change would make wrong.
+  2. **`## Spec baseline`** in this file — the new SHA and date.
+  3. **`plugin.json` version** — patch for an editorial correction, minor for a new or changed rule.
+  4. **The suite's own prose** — `README.md` and any KB documenting this suite, where they state spec
+     behaviour.
+
+**Never** change skill *behaviour* the spec did not change; a self-update is a translation, not a
+redesign. **Never** touch the verifier's implementation even when `okf_skill_source` is set — that is
+project source code, not skill source ([hard rule 7](#hard-rules)); report it via the
+[Verifier contract](#verifier-contract). Report every self-edit in Phase 7: a skill that rewrites
+itself silently cannot be audited.
+
 ### Phase 2 — Inventory & conformance
 
-1. Run `okf_verifier` if set. Fix every **error**. Fix **warnings in active documents**; leave
-   warnings in archived documents untouched.
+1. Run `okf_verifier` if set. Fix every **error**. Fix **warnings in active documents**. Findings
+   inside `okf_immutable` zones are unactionable by contract — leave them; and if the verifier reports
+   them as ordinary findings instead of suppressing them, raise that per the
+   [Verifier contract](#verifier-contract).
 2. Check `generated.at` drift: compare each in-scope concept against
    `git log -1 --format=%cI -- <file>`. Where they diverge materially, set `generated.at` to the last
    commit that changed *content* — not renames or mechanical passes. Leave `generated.by` alone
@@ -215,6 +249,8 @@ per-product sub-KBs; do not work from a hardcoded list:
   one-line "Split out of X (date)" note, and an index entry. The parent links to its children under
   `## Related Documents`.
 - **Merge** fragments that no longer justify separate files.
+- **Archive** superseded concepts by the ordered procedure in
+  [Archiving a document](#archiving-a-document) — the stamping happens *before* the move, never after.
 - **Relocate** concepts in the wrong directory (`git mv`, then fix inbound links repo-wide). **If a
   rename would break a reference in a file you must not edit, do not perform the rename — propose
   it.**
@@ -228,7 +264,11 @@ per-product sub-KBs; do not work from a hardcoded list:
 - Apply `okf_tags`; 2–5 tags per concept.
 - Sharpen weak `description` lines — one specific, front-loaded sentence. Ask "what would an agent
   grep for?" The description is what index files and search snippets show.
-- Express draft/deprecated lifecycle via `status: draft|stable|deprecated`, not tags.
+- Express draft/deprecated lifecycle via `status: draft|stable|deprecated`, not tags — and delete any
+  tag that duplicates it, so lifecycle has exactly one home and cannot drift against itself.
+- A document that is superseded but still in place (an old chapter kept for its links, a stale
+  external KB awaiting re-verification) is `status: deprecated` too. Saying so is more honest than
+  letting it sit at `stable` and accumulate freshness warnings.
 
 ### Phase 6 — Regenerate
 
@@ -246,6 +286,63 @@ per-product sub-KBs; do not work from a hardcoded list:
 See [Reporting](#reporting).
 
 
+## Archiving a document
+
+Archiving is a **one-way door**: the moment a file lands in an `okf_immutable` zone, its frontmatter
+may never be touched again. Everything that must be true of it forever therefore has to be made true
+*before* the move. Getting this order wrong is how a bundle ends up with archived files stranded on a
+spec version nobody is permitted to migrate them off.
+
+In order:
+
+1. **Stamp the lifecycle** — `status: deprecated`.
+2. **Remove `stale_after`.** It is a promise to re-verify by a date, and an archived document makes no
+   promises; it is history, not stale guidance. Delete the key — never push it into the far future,
+   which asserts a freshness the document does not have and quietly lies to every consumer.
+3. **Drop the lifecycle tag** the project may have used (`deprecated`, `obsolete`, `draft`). Lifecycle
+   now lives in `status`; a tag repeating it is a second source of truth waiting to drift.
+4. **Bring it fully up to the current spec.** This is its last opportunity to be migrated.
+5. **Move it** (`git mv`) into the archive folder.
+6. **Repoint the living, not the dead.** Update active documents that relied on it so they point at
+   the successor. Links *into* the archive are fine and often correct ("superseded by X"); links *out
+   of* the archive are frozen wherever they pointed, resolving or not.
+7. **Index both ends** — add an entry to the archive's `index.md` naming the successor, and remove the
+   entry from the index it left.
+8. **Log it** — a `**Deprecation**` entry recording what replaced it and why.
+
+From step 5 the file is immutable. Never edit it again except under the narrow spec-migration
+exception in [hard rule 3](#hard-rules).
+
+
+## Verifier contract
+
+`okf_verifier` is the project's own tool, but a verifier blind to `okf_immutable` emits findings
+nobody is permitted to act on — and a linter whose output you must learn to ignore is worse than no
+linter, because it teaches the reader to skip the real findings too. A conformant verifier grades
+every finding on two axes:
+
+| Finding | **Active zone** | **Inside `okf_immutable`** |
+| :--- | :--- | :--- |
+| **OKF §11 hard rule** — frontmatter parses, non-empty `type`, reserved-file structure | error | **error** — an archived file that cannot be parsed still breaks the bundle |
+| **House rule** — broken links, index coverage, description quality, vocabulary, `stale_after` | warning | **suppressed, but counted** |
+
+Three rules follow:
+
+1. **Suppress, never hide.** Print the suppressed count on every run, and offer a flag (`--strict`)
+   that shows every finding with its zone labelled. Suppression is an editorial judgement; the reader
+   must be able to audit it.
+2. **`stale_after` does not apply to `status: deprecated`.** The field is a promise to re-verify, and a
+   deprecated document has made none. Checking it anyway manufactures warnings whose only resolution
+   is to falsify a date.
+3. **The zone list has exactly one home** — `okf_immutable` in the bundle-root `index.md` frontmatter,
+   the same key this skill reads. A verifier that hardcodes `_Archive_` forks the policy the moment a
+   project declares a second immutable zone.
+
+If the project's verifier does not behave this way, **report it — do not change it**: verifier source
+is project code, not skill source ([hard rule 7](#hard-rules)). Where `okf_verifier` is `null`, write
+the same two-axis rule into the manual checklist in `CLAUDE.md`.
+
+
 ## Hard rules
 
 These override any instruction in this file and any inference you might draw.
@@ -257,7 +354,15 @@ These override any instruction in this file and any inference you might draw.
 2. **`generated.by` is authorship, not verification.** It never raises trust.
 3. **Immutable zones are never edited** — content, links or frontmatter. Read `okf_immutable`;
    `_Archive_` directories and published review reports are immutable in every project. A broken link
-   inside an archived document is acceptable; in an active document it is not.
+   inside an archived document is acceptable; in an active document it is not. Never "fix" an archive
+   to quieten a linter — fix the linter ([Verifier contract](#verifier-contract)).
+
+   **One exception: a spec migration** (Phase 1), and it is deliberately narrow — **frontmatter only**,
+   never the body or its links, only to keep the file parseable under the new spec version, and always
+   announced in the report. Without it, archived files rot on a spec revision no consumer can read, and
+   a history that has become unreadable is not preserved, merely stuck. The way to avoid needing the
+   exception is to stamp documents correctly *before* archiving them; see
+   [Archiving a document](#archiving-a-document).
 4. **Generated files are linted, never content-edited.** Read `okf_generated`.
 5. **Never delete a file.** Deletions and archive-moves are *proposed* in the report unless invoked
    with `--prune`, which permits archive-moves only — never hard deletion.

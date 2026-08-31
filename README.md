@@ -15,7 +15,7 @@ questions the first time, then gets out of your way.
 | Skill | What it does |
 | :--- | :--- |
 | **`/xnd:kb-*`** — your knowledge base | |
-| `/xnd:kb-update` | Sets up a knowledge base, or keeps an existing one healthy — tracks changes to the OKF spec, migrates your files to match, re-verifies your third-party reference docs against upstream, splits files that grew too big, sharpens summaries, and regenerates every index |
+| `/xnd:kb-update` | Sets up a knowledge base, or keeps an existing one healthy — tracks changes to the OKF spec, migrates your files to match **and updates its own instructions to match too**, re-verifies your third-party reference docs against upstream, splits files that grew too big, sharpens summaries, and regenerates every index |
 | | |
 | **`/xnd:project-*`** — your whole project | |
 | `/xnd:project-review` | Reads your whole project — documentation *and* substance — cross-references the two, and writes a dated report: what's strong, what drifted, what to do next |
@@ -69,16 +69,40 @@ might ask whether the prose holds its voice.
 
 - **Nothing is deleted.** Removals are proposed, never performed.
 - **Nothing is committed.** Every change lands in your working tree for you to read first.
-- **Archives stay archived.** Historical documents are never rewritten.
+- **Archives stay archived.** Historical documents are never rewritten — and never nagged about
+  either. A broken link in a five-year-old document you've promised never to touch is history, not a
+  defect, so it's counted rather than shouted. (`--strict` shows you everything, always.)
 - **Trust is earned, not stamped.** The skills mark what a machine verified against upstream, and
   leave the human sign-off to you — because a blanket "verified" tells you nothing.
 
 ## Local development
 
+Two ways to run the suite from a checkout. They answer different questions.
+
+**Fast loop** — edit, reload, repeat. Skips the marketplace entirely:
+
 ```bash
 claude --plugin-dir ./plugins/xnd
 /reload-plugins
 ```
+
+**Dogfooding** — use the plugin exactly as an installed user would, from the same repo you develop it
+in. A marketplace is just a directory containing `.claude-plugin/marketplace.json`, and `add` accepts
+a path, so point it at your own working tree:
+
+```bash
+/plugin marketplace add ./Code/AgentSkillSuite
+/plugin install xnd@agent-skill-suite
+```
+
+A directory-sourced marketplace is **linked, not copied** — the install points straight back at your
+working tree — so edits to a `SKILL.md` are live in the next session, with no reinstall step. Only
+changes to `marketplace.json` or `plugin.json` need `/plugin marketplace update agent-skill-suite`.
+
+Use `--scope project` to commit the marketplace entry so collaborators get it automatically, or
+`--scope local` to keep it to your machine. Either way the install resolves through the real
+marketplace code path, so a broken `marketplace.json`, a bad `source` path or a missing skill fails
+for you before it fails for anyone else.
 
 ## Licence
 
