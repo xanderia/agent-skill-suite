@@ -60,7 +60,7 @@ They're independent, which is what makes the same plugin fit very different proj
 usually keeps its knowledge in a `Notes/` folder and sets both there. A writing project sets
 `okf_root: "/"` — because *everything* is the knowledge — while keeping `Notes/` for the machinery.
 
-`/xnd:project-review` reads one more file, `ReviewConfiguration.md`, where you declare what a good review
+`/xnd:project-review` reads one more file, `Review Prompt.md`, where you declare what a good review
 looks like *for you*: which dimensions matter, what order to read things in, which conventions to
 hold the project to. A software project might ask for type-system health and secret hygiene; a novel
 might ask whether the prose holds its voice.
@@ -74,6 +74,19 @@ might ask whether the prose holds its voice.
   defect, so it's counted rather than shouted. (`--strict` shows you everything, always.)
 - **Trust is earned, not stamped.** The skills mark what a machine verified against upstream, and
   leave the human sign-off to you — because a blanket "verified" tells you nothing.
+
+## Two ideas worth knowing before you start
+
+**Archiving is a one-way door.** Once a document enters an archive, the skills never touch it again —
+so everything that must be true of it forever gets stamped *before* the move, not after. Skip that
+order and you end up with archived files frozen on an old format that nothing is allowed to migrate.
+The skill performs the steps for you in the right sequence.
+
+**Stale is not the same as deprecated, and neither is a tag.** A document that is *superseded* says so
+in `status`. A document that is merely *out of date* says so by having a `stale_after` date in the
+past. A document nobody has checked says so by having no `verified` entry. Three questions, three
+fields, no overlap — which is why the skills will not let you express one of them with a tag, or
+silence a stale warning by pushing its date into the future.
 
 ## Local development
 
@@ -103,6 +116,13 @@ Use `--scope project` to commit the marketplace entry so collaborators get it au
 `--scope local` to keep it to your machine. Either way the install resolves through the real
 marketplace code path, so a broken `marketplace.json`, a bad `source` path or a missing skill fails
 for you before it fails for anyone else.
+
+## Contributing and releases
+
+[MAINTAINING.md](MAINTAINING.md) covers the repository topology, how releases are versioned and
+published, and the spec-baseline rule. [CHANGELOG.md](CHANGELOG.md) records every behaviour change —
+worth reading before an upgrade, because the skills are prompts and a behaviour change leaves no trace
+in a code diff.
 
 ## Licence
 

@@ -44,29 +44,36 @@ This skill's instructions were written against OKF spec commit **`62432a09`** (2
    - **Marker absent** → run [Install](#install-flow-first-run-only).
    - **Marker present** → run [Maintain](#maintain-flow), silently, without re-asking anything.
 
-2. **Read the config** from `{OKF_Metadata_Dir}/index.md` frontmatter:
+2. **Read the config** from `{OKF_Metadata_Dir}/_Configuration_/Configuration.yaml`:
 
    | Key | Meaning |
    | :--- | :--- |
-   | `okf_version` | Spec version the bundle targets |
-   | `okf_spec_sha` | Last-seen upstream spec commit — **drives drift detection** |
-   | `okf_root` | What is *in* the bundle (may be `/`) |
-   | `okf_metadata_dir` | Where metadata, plans, external KBs and this config live |
-   | `okf_ignore` | `gitignore` (live link) or `file` (`{Meta}/Ignore.md`) |
-   | `okf_case_files` | Naming convention for new files |
-   | `okf_case_folders` | Naming convention for new folders |
-   | `okf_verifier` | Shell command to lint the bundle, or `null` |
-   | `okf_types` | The project's `type` vocabulary |
-   | `okf_tags` | The project's tag vocabulary |
-   | `okf_immutable` | Glob patterns never to edit |
-   | `okf_generated` | Files linted but never content-edited |
-   | `okf_skill_source` | Path to this suite's own source, when the project vendors it — enables [Phase 1b](#phase-1b--self-update). Absent → report needed changes, never self-edit |
-   | `okf_base_prompt` | Path to the always-loaded base prompt `CLAUDE.md` imports. Default `{Metadata_Dir}/_Workflows_/knowledge-base/base-prompt.md` |
-   | `kb_title` | Prose title for reports |
+   | `spec.sha` | Last-seen upstream spec commit — **drives drift detection** |
+   | `layout.root` | What is *in* the bundle (may be `/`) |
+   | `layout.metadata_dir` | Where config, plans, external KBs live |
+   | `layout.base_prompt` | The always-loaded prompt `CLAUDE.md` imports |
+   | `layout.review_prompt` | The review contract `/xnd:project-review` reads |
+   | `layout.skill_source` | Path to this suite's own source, when the project vendors it — enables [Phase 1b](#phase-1b--self-update). Absent → report needed changes, never self-edit |
+   | `naming.files` / `naming.folders` | Case convention for new files and folders |
+   | `naming.dates_in_filenames` | Date format **for filenames only** — never for `log.md` headings, which OKF §7 fixes as ISO `YYYY-MM-DD` |
+   | `naming.reserved` / `naming.reserved_folders` | Names that keep their given form regardless of case rules |
+   | `vocabulary.types` / `vocabulary.tags` | The project's `type` and tag vocabularies |
+   | `zones.ignore` | `gitignore` (live link) or `file` (`{Meta}/Ignore.md`) |
+   | `zones.immutable` | Glob patterns never to edit |
+   | `zones.generated` | Files linted but never content-edited |
+   | `verifier` | Shell command to lint the bundle, or `null` |
+   | `title` | Prose title for reports |
 
-   **`okf_root` and `okf_metadata_dir` are independent.** They are often the same directory, but must
-   never be assumed equal — a project may set `okf_root: "/"` (everything is knowledge) while keeping
-   `okf_metadata_dir: "Notes"`.
+   **`okf_version` is not in this file.** OKF §12 places it in the bundle-root `index.md`
+   frontmatter, which is where a spec-only consumer looks. It is the one spec-defined key, and no key
+   lives in two places — read it from there when you need it.
+
+   **`layout.root` and `layout.metadata_dir` are independent.** They are often the same directory, but
+   must never be assumed equal — a project may set `root: "/"` (everything is knowledge) while keeping
+   `metadata_dir: "Notes"`.
+
+   **The human is expected to edit this file by hand.** Everything derived from it — above all the
+   base prompt — is regenerated in [Phase 0](#phase-0--verify-the-installation), never patched around.
 
 3. **Never guess a missing key.** If the marker exists but a key is absent, ask for that one key and
    write it back.
@@ -109,7 +116,10 @@ names fixed by a library or standard (`README.md`, `SKILL.md`, `index.md`, `log.
 
 ### 3. Date format
 
-Default `YYYY.MM.DD` **(recommended)** or `YYYY-MM-DD`. Used for review reports and log headings.
+Default `YYYY.MM.DD` **(recommended)** or `YYYY-MM-DD`. Used for **filenames** — review reports and
+anything else dated. It does **not** govern `log.md` date headings, which OKF §7 fixes as ISO
+`YYYY-MM-DD` regardless of this answer; say so when you ask, because letting the filename convention
+leak into log headings is a conformance error that is easy to make and hard to notice.
 
 ### 4. Ignore strategy
 
@@ -123,8 +133,8 @@ Either way a hard floor always applies and is never configurable:
 
 Ask whether a conformance CLI is available (for XANDERIA: `xnd notes verify`).
 
-- **Yes** → record the exact command in `okf_verifier`; run it at the end of every maintain run.
-- **No** → set `okf_verifier: null` and write into the CLAUDE.md section that OKF adherence must be
+- **Yes** → record the exact command in `verifier`; run it at the end of every maintain run.
+- **No** → set `verifier: null` and write into the CLAUDE.md section that OKF adherence must be
   **checked manually**, listing what to check: frontmatter presence, `type` validity, index coverage,
   relative-link resolution.
 
@@ -135,14 +145,19 @@ Ask whether a conformance CLI is available (for XANDERIA: `xnd notes verify`).
 - `{Metadata_Dir}/_Plans_/_ReviewReports_` — output of `/xnd:project-review`
 - `{Metadata_Dir}/_Plans_/_Archive_` — superseded plans
 - `{Metadata_Dir}/_Workflows_/knowledge-base` — holds the base prompt `CLAUDE.md` imports
-  (kebab-case regardless of `okf_case_folders`; see [Anchor constraints](#anchor-constraints))
+  (kebab-case regardless of `naming.folders`; see [Anchor constraints](#anchor-constraints))
+- `{Metadata_Dir}/_Configuration_` — holds `Configuration.yaml`; **not optional**, the rest of the
+  skill reads it
 
 Each created folder gets an `index.md`.
 
 ### 7. Write the install artifacts
 
-1. Config frontmatter into `{Metadata_Dir}/index.md`.
-2. **The base prompt** at `okf_base_prompt` — a normal concept document (full frontmatter, listed in
+1. **`{Metadata_Dir}/_Configuration_/Configuration.yaml`** — every answer above, grouped under
+   `spec`, `layout`, `naming`, `vocabulary`, `zones`, plus `verifier` and `title`. Write it with
+   comments: it is meant to be read and edited by a human. Put `okf_version` in the bundle-root
+   `index.md` frontmatter instead, per OKF §12 — and nowhere else.
+2. **The base prompt** at `layout.base_prompt` — a normal concept document (full frontmatter, listed in
    its directory's `index.md`) carrying the resolved config, the verifier instruction, the naming
    conventions, the immutable-zone and archiving rules, and this rule:
 
@@ -153,18 +168,18 @@ Each created folder gets an `index.md`.
 3. **The anchor** in `CLAUDE.md` — a short section, nothing more:
 
    ```markdown
-   # {kb_title}
+   # {title}
 
    <!-- okf:installed — managed by /xnd:kb-update; edit the imported file, not this block. -->
 
    The operating instructions for the `{Metadata_Dir}/` bundle are imported here:
 
-   @{okf_base_prompt}
+   @{layout.base_prompt}
    ```
 
    See [Anchor constraints](#anchor-constraints) before writing it — the import path has rules.
 
-4. A starter `{Metadata_Dir}/ReviewConfiguration.md` for `/xnd:project-review` to consume.
+4. A starter `{Metadata_Dir}/_Workflows_/Review Prompt.md` for `/xnd:project-review` to consume.
 5. Vendor the spec (see [Phase 1](#phase-1--spec-drift)).
 
 Then run the maintain flow.
@@ -183,17 +198,34 @@ Runs first on every maintain run. It is cheap, and everything after it assumes t
      `@…/base-prompt.md` import line.
    - **Inline** (legacy) — the section carries the full instruction text directly.
    - **Absent** — run [Install](#install-flow-first-run-only) instead.
-3. **Migrate inline → anchored.** Move the section body verbatim into `okf_base_prompt`; add
-   frontmatter (a `type` from `okf_types`, a `description`, `generated`); **rebase every relative link
-   in the moved text** — the content dropped several directories, so a root-relative `Notes/x.md`
-   becomes `../../x.md`, and every link that resolved from the repo root needs one `../` per level;
-   list it in its directory's `index.md`; then replace the `CLAUDE.md` section with the anchor. Report
-   the migration — it rewrites a file the human owns.
-4. **Repair the anchor** if it drifted: heading, marker comment, one-line explanation, import line,
+3. **Migrate inline → anchored.** Move the section body verbatim into `layout.base_prompt`; add
+   frontmatter (a `type` from `vocabulary.types`, a `description`, `generated`); **rebase every
+   relative link in the moved text** — the content dropped several directories, so a root-relative
+   `Notes/x.md` becomes `../../x.md`, and every link that resolved from the repo root needs one `../`
+   per level; list it in its directory's `index.md`; then replace the `CLAUDE.md` section with the
+   anchor. Report the migration — it rewrites a file the human owns.
+4. **Migrate frontmatter config → `Configuration.yaml`.** A bundle whose root `index.md` still carries
+   `okf_*` keys beyond `okf_version` predates the central config file. Move every producer-defined key
+   into `{Metadata_Dir}/_Configuration_/Configuration.yaml` under its new group (`spec`, `layout`,
+   `naming`, `vocabulary`, `zones`), **leave `okf_version` where it is** (OKF §12), scaffold
+   `_Configuration_/index.md`, and report the migration. Never leave a key in both places.
+5. **Repair the anchor** if it drifted: heading, marker comment, one-line explanation, import line,
    and the import target actually existing.
-5. **Reconcile the base prompt against the config.** Everything it quotes — naming case, date format,
-   verifier command, immutable zones, type vocabulary — must match `{Metadata_Dir}/index.md`
-   frontmatter. It is generated content: rewrite it, do not patch around it.
+6. **Regenerate the base prompt from the config.** This is the step that makes hand-editing
+   `Configuration.yaml` safe, so treat it as mechanical rather than a judgement call:
+
+   - The base prompt's `## Bundle Configuration` table is **generated**. Render it fresh from the
+     config, quoting every value **verbatim in a code span** — `` `title-case` ``, not "Title Case
+     with spaces". A prose paraphrase cannot be checked, and an uncheckable claim drifts.
+   - Every other derived fact in the base prompt — immutable zones, the type vocabulary, the verifier
+     command, naming rules, the paths in `layout` — is regenerated the same way.
+   - **Compare by re-rendering, not by checksum.** A stored hash would be a second source of truth
+     about the same fact, and would go stale exactly when it matters. Render, diff, rewrite on
+     mismatch.
+
+   A stale base prompt is the worst failure this skill has, because it is invisible: the file is
+   expanded into context at launch and still *reads* like instruction while teaching the wrong rules.
+   Where the project's verifier can check this (XND's does), say so in the report.
 
 #### Anchor constraints
 
@@ -223,14 +255,14 @@ the automatic loading is lost.
 1. Fetch `https://raw.githubusercontent.com/GoogleCloudPlatform/knowledge-catalog/main/okf/SPEC.md`.
 2. Fetch its **latest commit SHA** for that path:
    `https://api.github.com/repos/GoogleCloudPlatform/knowledge-catalog/commits?path=okf/SPEC.md&per_page=1`
-3. Compare against `okf_spec_sha`.
+3. Compare against `spec.sha`.
 
 > ⚠️ **Never decide staleness from the spec's declared version string.** On 2026-08-21 the spec
 > changed materially (commit `62432a09` — every timestamp became an ISO 8601 datetime with an
 > explicit UTC offset) while still declaring **Version 0.2**. A version check reports "nothing to do"
 > and is wrong. The SHA is the source of truth.
 
-4. **Vendor the spec** into `{Metadata_Dir}/External/OKF/` alongside its SHA, so runs are
+4. **Vendor the spec** into `{Metadata_Dir}/_External_/OKF/` alongside its SHA, so runs are
    reproducible and revision diffs are inspectable. Update that KB's chapters and `log.md` to match
    any changes.
 5. **Guard against major bumps.** If the new spec renames or removes *required* fields (a major
@@ -241,7 +273,7 @@ the automatic loading is lost.
    - **fence-aware** — `type:` and friends appear inside documentation code blocks as *examples*;
      rewriting those corrupts the docs;
    - **immutable-zone-aware** — see [hard rules](#hard-rules).
-7. Set `okf_spec_sha` to the new SHA.
+7. Set `spec.sha` to the new SHA.
 
 ### Phase 1b — Self-update
 
@@ -249,7 +281,7 @@ A spec change that this skill's own instructions contradict does not merely leav
 it makes it **actively wrong**, because it will keep migrating files toward a rule that no longer
 exists. The skill is therefore part of what Phase 1 migrates.
 
-Read `okf_skill_source`.
+Read `layout.skill_source`.
 
 - **Absent** — the normal case: the plugin is installed read-only from a marketplace. Write the needed
   changes into the Phase 7 report under *What needs you*, quoting the spec passage and naming the file
@@ -263,15 +295,15 @@ Read `okf_skill_source`.
      behaviour.
 
 **Never** change skill *behaviour* the spec did not change; a self-update is a translation, not a
-redesign. **Never** touch the verifier's implementation even when `okf_skill_source` is set — that is
+redesign. **Never** touch the verifier's implementation even when `layout.skill_source` is set — that is
 project source code, not skill source ([hard rule 7](#hard-rules)); report it via the
 [Verifier contract](#verifier-contract). Report every self-edit in Phase 7: a skill that rewrites
 itself silently cannot be audited.
 
 ### Phase 2 — Inventory & conformance
 
-1. Run `okf_verifier` if set. Fix every **error**. Fix **warnings in active documents**. Findings
-   inside `okf_immutable` zones are unactionable by contract — leave them; and if the verifier reports
+1. Run `verifier` if set. Fix every **error**. Fix **warnings in active documents**. Findings
+   inside `zones.immutable` zones are unactionable by contract — leave them; and if the verifier reports
    them as ordinary findings instead of suppressing them, raise that per the
    [Verifier contract](#verifier-contract).
 2. Check `generated.at` drift: compare each in-scope concept against
@@ -280,12 +312,12 @@ itself silently cannot be audited.
    unless you rewrote the content, in which case set it to your own actor id.
 3. Flag size outliers: concepts over ~500 lines or ~2,500 words are re-chunk candidates for Phase 4;
    under ~15 lines are merge candidates.
-4. Check tag health against `okf_tags`: values outside the vocabulary, singular/plural drift,
+4. Check tag health against `vocabulary.tags`: values outside the vocabulary, singular/plural drift,
    concepts with 0–1 tags that deserve more.
 
 ### Phase 3 — Upstream verification (external KBs)
 
-For **every** external KB the project has — enumerate `{Metadata_Dir}/External/*`, including
+For **every** external KB the project has — enumerate `{Metadata_Dir}/_External_/*`, including
 per-product sub-KBs; do not work from a hardcoded list:
 
 1. Read its `gotchas.md` (version notes) and `log.md` (when last verified, against what).
@@ -299,9 +331,13 @@ per-product sub-KBs; do not work from a hardcoded list:
    re-verification of every chapter is not required; verify what changed upstream, changelogs first.
 5. Apply updates: correct stale facts, add new gotchas, mark removed features. For a major upstream
    version, prefer adding a clearly-dated "vX changes" section over silently rewriting history.
-6. Append to the KB's `log.md`:
+6. **Record the pinned version** in `gotchas.md` frontmatter — `upstream: {product, version, kind}`
+   and the canonical `resource:` — per [External KB metadata](#external-kb-metadata). If the KB
+   already states a version only in prose, promote it; if the version genuinely changed, update it in
+   the same pass as the content.
+7. Append to the KB's `log.md`:
    `* **Verification**: Verified against <upstream version / docs date>; <drift found, or "no drift">.`
-7. **Record the verification in frontmatter.** On each chapter you actually checked (at minimum the
+8. **Record the verification in frontmatter.** On each chapter you actually checked (at minimum the
    KB's `gotchas.md`), append a `verified` entry with **your own** actor id and today's datetime:
 
    ```yaml
@@ -332,7 +368,7 @@ per-product sub-KBs; do not work from a hardcoded list:
 
 ### Phase 5 — Re-tag & re-describe
 
-- Apply `okf_tags`; 2–5 tags per concept.
+- Apply `vocabulary.tags`; 2–5 tags per concept.
 - Sharpen weak `description` lines — one specific, front-loaded sentence. Ask "what would an agent
   grep for?" The description is what index files and search snippets show.
 - Express draft/deprecated lifecycle via `status: draft|stable|deprecated`, not tags — and delete any
@@ -345,54 +381,128 @@ per-product sub-KBs; do not work from a hardcoded list:
 
 1. Rebuild every in-scope `index.md` from directory contents + frontmatter descriptions. Order
    most-important-first within sections (overviews and gotchas first), not alphabetical.
-2. Append `log.md` entries — bundle root always, per-KB where touched. Newest first,
+2. **Regenerate the external-KB registry** in `{Metadata_Dir}/_External_/index.md` from each KB's
+   `gotchas.md` frontmatter — product, pinned version, and the most recent `verified.at`. Derive
+   shape from the directory tree rather than reading it from anywhere. Never carry a version string
+   forward by hand; if a KB has no `upstream` key yet, say so in the table rather than guessing.
+3. Append `log.md` entries — bundle root always, per-KB where touched. Newest first,
    `## <date>` headings in the project's date format, bold leading verb (`**Update**`,
    `**Creation**`, `**Deprecation**`, `**Verification**`).
-3. Refresh `generated.at` on every file whose *content* you changed; set `generated.by` to your actor
+4. Refresh `generated.at` on every file whose *content* you changed; set `generated.by` to your actor
    id where you rewrote content.
-4. Re-run `okf_verifier` — it must exit with zero errors before you finish.
+5. Re-run `verifier` — it must exit with zero errors before you finish.
 
 ### Phase 7 — Report
 
 See [Reporting](#reporting).
 
 
+## External KB metadata
+
+Three questions get asked of an external KB — *what shape is it?*, *what version does it describe?*,
+and *what is here?* — and they have three different right answers. Collapsing them into one central
+registry is tempting and wrong in a specific, checkable way.
+
+### Shape is derived, never stored
+
+**Simple** (one folder of chapters) versus **complex** (sub-folders per vendor sub-product) is a
+question the filesystem already answers: a KB is complex when its directory holds sub-directories that
+carry their own `index.md`. Recording the answer creates a second source of truth that can disagree
+with the tree — and the tree always wins, so the record is at best redundant and at worst misleading.
+Ask the human which shape to **create**; never ask a file which shape a KB **is**.
+
+### Version lives with the content it describes
+
+The pinned upstream identity belongs in the KB's own `gotchas.md` frontmatter, for three reasons in
+increasing order of severity:
+
+1. **A central `index.md` cannot hold it.** Reserved index files must not carry frontmatter, so a
+   central registry could only express this as body prose — unparseable, and invisible to the trust
+   machinery.
+2. **Freshness is per-document.** `stale_after` and `verified` are per-file and derive the trust tier.
+   A central version string would sit in a different file from the `stale_after` it is supposed to
+   justify, so the two would drift with nothing to catch it.
+3. **One version per KB is frequently a lie.** A KB whose chapter 10 was verified against the
+   installed package while chapters 01–09 describe a version two generations older cannot be honestly
+   summarised by a single number — and that is the *normal* state of a KB being repaired
+   incrementally. A single field erases exactly the distinction a reader needs.
+
+`gotchas.md` is the right file because it is already the KB's canonical head, already where version
+notes live in prose, and already what [Phase 3](#phase-3--upstream-verification-external-kbs) stamps
+`verified` onto.
+
+```yaml
+resource: https://github.com/sindresorhus/ky   # OKF §4 — canonical upstream for this KB
+upstream:
+  product: ky
+  version: "2.0.2"
+  kind: semver                                 # semver | sha | date
+```
+
+`upstream` is a producer-defined key; the spec explicitly permits these and requires consumers to
+preserve them. **`kind` records which identifier upstream actually publishes** — do not force one
+scheme. A package registry gives honest semver. A git-hosted spec gives a commit SHA, and needs to:
+the OKF spec changed materially on 2026-08-21 while still declaring `Version 0.2`. A documentation
+site with neither gives only the date you fetched it. `kind` tells a consumer whether comparing two
+values with `>` means anything.
+
+### The central index is generated, not authored
+
+A registry of *what exists, at what version, last checked when* is genuinely useful — for discovery.
+It must be **generated from the per-KB frontmatter in [Phase 6](#phase-6--regenerate)**, never
+hand-maintained, because a hand-maintained copy drifts silently and nothing lints prose.
+
+This is not hypothetical. The XANDERIA bundle's `_External_/index.md` described its OKF KB as
+*"Open Knowledge Format v0.1"* for **five weeks** after the bundle moved to v0.2 — while the KB's own
+files, its `log.md` and the bundle config all said v0.2 correctly. The single authored copy was the
+only thing that was wrong, and no check could have caught it.
+
+So: **truth per-KB in frontmatter; the central table is a generated cache with a known generator;
+shape is computed on demand.** The direction of flow is always per-KB → central, never the reverse.
+
+
 ## Archiving a document
 
-Archiving is a **one-way door**: the moment a file lands in an `okf_immutable` zone, its frontmatter
+Archiving is a **one-way door**: the moment a file lands in an `zones.immutable` zone, its frontmatter
 may never be touched again. Everything that must be true of it forever therefore has to be made true
 *before* the move. Getting this order wrong is how a bundle ends up with archived files stranded on a
 spec version nobody is permitted to migrate them off.
 
 In order:
 
-1. **Stamp the lifecycle** — `status: deprecated`.
-2. **Remove `stale_after`.** It is a promise to re-verify by a date, and an archived document makes no
+1. **Rescue what is still live.** Read the document for unfinished business — unchecked boxes, open
+   questions, deferred decisions — and move each one somewhere active: an open plan, the relevant
+   concept document, or a project's issue tracker. The archive is where open items go to die quietly,
+   because the `git mv` is the last moment anyone reads them. Verify the finished parts really are
+   finished rather than trusting the document's own account of itself; a plan that says a step remains
+   may be describing work that has since shipped, and one that says a step is done may be wrong.
+2. **Stamp the lifecycle** — `status: deprecated`.
+3. **Remove `stale_after`.** It is a promise to re-verify by a date, and an archived document makes no
    promises; it is history, not stale guidance. Delete the key — never push it into the far future,
    which asserts a freshness the document does not have and quietly lies to every consumer.
-3. **Drop the lifecycle tag** the project may have used (`deprecated`, `obsolete`, `draft`). Lifecycle
+4. **Drop the lifecycle tag** the project may have used (`deprecated`, `obsolete`, `draft`). Lifecycle
    now lives in `status`; a tag repeating it is a second source of truth waiting to drift.
-4. **Bring it fully up to the current spec.** This is its last opportunity to be migrated.
-5. **Move it** (`git mv`) into the archive folder.
-6. **Repoint the living, not the dead.** Update active documents that relied on it so they point at
+5. **Bring it fully up to the current spec.** This is its last opportunity to be migrated.
+6. **Move it** (`git mv`) into the archive folder.
+7. **Repoint the living, not the dead.** Update active documents that relied on it so they point at
    the successor. Links *into* the archive are fine and often correct ("superseded by X"); links *out
    of* the archive are frozen wherever they pointed, resolving or not.
-7. **Index both ends** — add an entry to the archive's `index.md` naming the successor, and remove the
+8. **Index both ends** — add an entry to the archive's `index.md` naming the successor, and remove the
    entry from the index it left.
-8. **Log it** — a `**Deprecation**` entry recording what replaced it and why.
+9. **Log it** — a `**Deprecation**` entry recording what replaced it and why.
 
-From step 5 the file is immutable. Never edit it again except under the narrow spec-migration
+From step 6 the file is immutable. Never edit it again except under the narrow spec-migration
 exception in [hard rule 3](#hard-rules).
 
 
 ## Verifier contract
 
-`okf_verifier` is the project's own tool, but a verifier blind to `okf_immutable` emits findings
+`verifier` is the project's own tool, but a verifier blind to `zones.immutable` emits findings
 nobody is permitted to act on — and a linter whose output you must learn to ignore is worse than no
 linter, because it teaches the reader to skip the real findings too. A conformant verifier grades
 every finding on two axes:
 
-| Finding | **Active zone** | **Inside `okf_immutable`** |
+| Finding | **Active zone** | **Inside `zones.immutable`** |
 | :--- | :--- | :--- |
 | **OKF §11 hard rule** — frontmatter parses, non-empty `type`, reserved-file structure | error | **error** — an archived file that cannot be parsed still breaks the bundle |
 | **House rule** — broken links, index coverage, description quality, vocabulary, `stale_after` | warning | **suppressed, but counted** |
@@ -405,12 +515,12 @@ Three rules follow:
 2. **`stale_after` does not apply to `status: deprecated`.** The field is a promise to re-verify, and a
    deprecated document has made none. Checking it anyway manufactures warnings whose only resolution
    is to falsify a date.
-3. **The zone list has exactly one home** — `okf_immutable` in the bundle-root `index.md` frontmatter,
-   the same key this skill reads. A verifier that hardcodes `_Archive_` forks the policy the moment a
-   project declares a second immutable zone.
+3. **The zone list has exactly one home** — `zones.immutable` in `Configuration.yaml`, the same key
+   this skill reads. A verifier that hardcodes `_Archive_` forks the policy the moment a project
+   declares a second immutable zone.
 
 If the project's verifier does not behave this way, **report it — do not change it**: verifier source
-is project code, not skill source ([hard rule 7](#hard-rules)). Where `okf_verifier` is `null`, write
+is project code, not skill source ([hard rule 7](#hard-rules)). Where `verifier` is `null`, write
 the same two-axis rule into the manual checklist in `CLAUDE.md`.
 
 
@@ -423,18 +533,30 @@ These override any instruction in this file and any inference you might draw.
    genuine verification event in Phase 3. A blanket stamp flattens the gradient to noise. Never write
    a human actor id on a human's behalf — only they can grant `human-reviewed`.
 2. **`generated.by` is authorship, not verification.** It never raises trust.
-3. **Immutable zones are never edited** — content, links or frontmatter. Read `okf_immutable`;
+3. **Immutable zones are never edited** — content, links or frontmatter. Read `zones.immutable`;
    `_Archive_` directories and published review reports are immutable in every project. A broken link
    inside an archived document is acceptable; in an active document it is not. Never "fix" an archive
    to quieten a linter — fix the linter ([Verifier contract](#verifier-contract)).
 
-   **One exception: a spec migration** (Phase 1), and it is deliberately narrow — **frontmatter only**,
+   **A reserved `index.md` inside an immutable zone is a finding aid, not history**, and stays
+   maintainable. The zone freezes archived *content*; an index that may never be corrected makes the
+   archive unnavigable, which serves nobody. So a rename or a moved successor updates the archive's
+   `index.md` — and leaves every archived concept document's links frozen exactly where they pointed.
+
+   **A project-wide naming migration** — the human changing `naming.files` or `naming.folders` and
+   asking for existing files to follow — may **rename** files inside an immutable zone. Path only,
+   never content. This is a genuine cost, and say so before doing it: a concept's identity *is* its
+   path, so renaming an archived document changes the thing immutability exists to protect, and every
+   inbound link from an active document must be rewritten in the same pass. Do it only on an explicit
+   instruction, never as tidying.
+
+   **One exception for concepts: a spec migration** (Phase 1), and it is deliberately narrow — **frontmatter only**,
    never the body or its links, only to keep the file parseable under the new spec version, and always
    announced in the report. Without it, archived files rot on a spec revision no consumer can read, and
    a history that has become unreadable is not preserved, merely stuck. The way to avoid needing the
    exception is to stamp documents correctly *before* archiving them; see
    [Archiving a document](#archiving-a-document).
-4. **Generated files are linted, never content-edited.** Read `okf_generated`.
+4. **Generated files are linted, never content-edited.** Read `zones.generated`.
 5. **Never delete a file.** Deletions and archive-moves are *proposed* in the report unless invoked
    with `--prune`, which permits archive-moves only — never hard deletion.
 6. **Never commit.** Leave the working tree for the human to review.
@@ -449,7 +571,7 @@ These override any instruction in this file and any inference you might draw.
 
 End with a **concise, joyous, beginner-friendly** report. Assume the reader does not know OKF
 jargon — say "added a summary line so search results read better", not "populated the description
-field". Lead with the lion and `kb_title`.
+field". Lead with the lion and `title`.
 
 Warmth must not soften bad news. State failures, skipped work and unverified claims plainly — a
 cheerful report that hides a broken bundle is worse than no report. Sections, in this order:
@@ -469,9 +591,9 @@ cheerful report that hides a broken bundle is worse than no report. Sections, in
 - **empty** or **`all`** — full run. Warn that this is the most expensive mode.
 - **`structure`** — phases 2, 4, 5, 6 only. Skips upstream verification entirely; cheap, run monthly.
 - **`external`** — Phase 3 for every external KB, plus a structure pass limited to
-  `{Metadata_Dir}/External/`.
+  `{Metadata_Dir}/_External_/`.
 - **`spec`** — Phase 1 only. Fast check for spec drift.
-- **`core`** — structure and accuracy pass on everything *except* `{Metadata_Dir}/External/`;
+- **`core`** — structure and accuracy pass on everything *except* `{Metadata_Dir}/_External_/`;
   cross-check docs against code, then fix rather than report.
 - **`<kb-name>`** — full treatment of one external KB and its sub-KBs. Recommended quarterly, or
   before a major dependency upgrade.

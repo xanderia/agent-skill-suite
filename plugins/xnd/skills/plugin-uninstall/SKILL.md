@@ -31,7 +31,7 @@ at once — say so plainly at the start.
    - concept files carrying frontmatter, grouped by folder, with counts
    - folders this plugin creates (`_Archive_`, `_Plans_`, `_Plans_/_ReviewReports_`,
      `_Plans_/_Archive_`, `_Workflows_/knowledge-base`) and whether each holds content the human wrote
-   - the `CLAUDE.md` anchor section **and** the base prompt it imports (`okf_base_prompt`) — these are
+   - the `CLAUDE.md` anchor section **and** the base prompt it imports (`layout.base_prompt`) — these are
      one unit: removing the anchor while leaving the file orphans it, and removing the file while
      leaving the anchor leaves a broken import in the human's `CLAUDE.md`
    - the config frontmatter itself
@@ -87,7 +87,7 @@ Warm, joyous, plain. Then a table, because the point is that they can see exactl
 | `Notes/_Plans_/` | **Kept** | Your plans are still here |
 | `Notes/_Plans_/_ReviewReports_/` | **Kept** | 2 reports preserved |
 | `CLAUDE.md` anchor | Removed | — |
-| Base prompt (`okf_base_prompt`) | Removed / inlined / kept | — |
+| Base prompt (`layout.base_prompt`) | Removed / inlined / kept | — |
 | Config frontmatter | **Kept** | A reinstall will remember your settings |
 
 Close with:

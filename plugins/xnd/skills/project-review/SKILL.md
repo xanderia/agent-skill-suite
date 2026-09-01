@@ -33,12 +33,12 @@ area — the human has already signalled they know what they are asking for.
 ## Step 1 — Resolve configuration
 
 1. Read `CLAUDE.md` (or `AGENTS.md`) and the config frontmatter in `{Metadata_Dir}/index.md` — the
-   same keys `/xnd:kb-update` writes. You need `okf_root`, `okf_metadata_dir`, `okf_immutable`,
-   `okf_types`, `okf_tags`, the date format, and `kb_title`.
-2. Read **`{Metadata_Dir}/ReviewConfiguration.md`** — the project's own review contract. It declares
+   same keys `/xnd:kb-update` writes. You need `layout.root`, `layout.metadata_dir`, `zones.immutable`,
+   `vocabulary.types`, `vocabulary.tags`, the date format, and `title`.
+2. Read **`{Metadata_Dir}/_Workflows_/Review Prompt.md`** — the project's own review contract. It declares
    which dimensions apply, which to skip, which to add, and the project-specific conventions to audit
    against.
-3. If `ReviewConfiguration.md` does not exist, say so, run the [core dimensions](#core-dimensions)
+3. If `Review Prompt.md` does not exist, say so, run the [core dimensions](#core-dimensions)
    only, and offer to generate a starter file at the end.
 
 
@@ -69,7 +69,7 @@ Do not work from a hardcoded file list. **Walk the bundle:**
    prose: its `gotchas.md` and its provenance/trust/lifecycle chapter.
 6. `{Metadata_Dir}/log.md` — what maintenance has actually happened, versus what was merely planned.
 7. Everything in `{Metadata_Dir}/_Plans_/`.
-8. `ReviewConfiguration.md`'s own reading additions, if it declares any.
+8. `Review Prompt.md`'s own reading additions, if it declares any.
 
 **Do not start Phase 2 until you have read every file above.**
 
@@ -77,7 +77,7 @@ Do not work from a hardcoded file list. **Walk the bundle:**
 # Phase 2 — Scan the substance
 
 Read the project's actual content — source code, manuscript, catalogue, whatever this project is.
-`ReviewConfiguration.md` declares the layers and their dependency order; follow it. Absent that,
+`Review Prompt.md` declares the layers and their dependency order; follow it. Absent that,
 derive an order from the dependency graph: most foundational first, most dependent last.
 
 Exclude what the ignore configuration excludes, plus lockfiles and generated output.
@@ -101,7 +101,7 @@ Exclude what the ignore configuration excludes, plus lockfiles and generated out
      Name the specific functions or modules that diverged.
    - *Plan drift* — cross-reference `_Plans_/*.md` against reality. Has planned work shipped without
      the plan being updated?
-2. **Convention compliance** — spot-check the conventions `ReviewConfiguration.md` declares. Report
+2. **Convention compliance** — spot-check the conventions `Review Prompt.md` declares. Report
    the top three most common deviations, with counts.
 3. **Gap identification** — what does the documentation promise that reality does not deliver? What
    exists but is undocumented?
@@ -112,7 +112,7 @@ Exclude what the ignore configuration excludes, plus lockfiles and generated out
    conformance.
 6. **Staleness audit** — for each external KB, compare its asserted versions against the versions
    actually installed or deployed.
-7. Any additional audits `ReviewConfiguration.md` declares.
+7. Any additional audits `Review Prompt.md` declares.
 
 
 # Phase 4 — Write the report
@@ -179,7 +179,7 @@ Always applicable, in any project:
 
 ## Project dimensions
 
-Everything `ReviewConfiguration.md` adds — security posture, test coverage, performance, commercial
+Everything `Review Prompt.md` adds — security posture, test coverage, performance, commercial
 strategy, tone and style adherence, whatever this project cares about. Treat them with the same depth
 as the core dimensions, and honour any dimension the configuration says to **skip**.
 

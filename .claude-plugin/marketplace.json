@@ -5,6 +5,7 @@
         "name": "XANDERIA",
         "url": "https://xanderia.one"
     },
+    "description": "Knowledge-base tooling for coding agents, built on the Open Knowledge Format — bundle maintenance that tracks the upstream spec, deep project review, and clean uninstall.",
     "plugins":
     [
         {
