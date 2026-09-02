@@ -18,13 +18,40 @@ at once — say so plainly at the start.
 > an explicit confirmation.
 
 
+## First — state your version
+
+Open with one line naming the skill and the plugin version you are running:
+
+> 🦁 Plugin Uninstall — plugin v<version>
+
+Resolve `plugin.json` by trying, in order, until one exists:
+
+1. `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`
+2. `.claude-plugin/plugin.json` two levels up from this skill's own directory — this file lives at
+   `plugins/<name>/skills/<skill>/SKILL.md`, so the manifest is `../../.claude-plugin/plugin.json`
+3. `{layout.skill_source}/.claude-plugin/plugin.json`, when the project vendors the suite
+
+If none resolves, say `plugin version unknown` and carry on. **Never hardcode the version into this
+file** — `plugin.json` is the single source of truth, and a copy here would drift.
+
+**Do not check for a newer version.** Someone uninstalling has no use for an upgrade prompt, and a
+network call here is pure noise. State the local version so the human can see what wrote the changes,
+and nothing more.
+
+
 ## Step 1 — Take stock
 
-1. Read the config from `{Metadata_Dir}/index.md` frontmatter and the `<!-- okf:installed -->` marker
-   in `CLAUDE.md`. **Read `CLAUDE.md` from disk with the Read tool** — block-level HTML comments are
-   stripped before a `CLAUDE.md` reaches the model, so checking context alone reports "not installed"
-   for a perfectly good install. The `@…/base-prompt.md` import line is the visible counterpart.
-   If neither marker nor config exists, say the plugin was never installed here and stop.
+1. Read the config from `{Metadata_Dir}/_Configuration_/Configuration.yaml` — resolved
+   case-insensitively, accepting `.yaml` or `.yml`, since the project's own naming convention governed
+   how `/xnd:kb-update` created it. A bundle predating that file keeps its config as `okf_*` keys in
+   `{Metadata_Dir}/index.md` frontmatter; fall back to reading it there. `okf_version` legitimately
+   lives in `index.md` either way.
+
+   Then read the `<!-- okf:installed -->` marker in `CLAUDE.md`. **Read `CLAUDE.md` from disk with the
+   Read tool** — block-level HTML comments are stripped before a `CLAUDE.md` reaches the model, so
+   checking context alone reports "not installed" for a perfectly good install. The
+   `@…/base-prompt.md` import line is the visible counterpart. If neither marker nor config exists,
+   say the plugin was never installed here and stop.
 2. Check whether the working tree is clean. If it is dirty, say so and recommend committing first —
    git is the only undo.
 3. Inventory what exists:
@@ -34,7 +61,8 @@ at once — say so plainly at the start.
    - the `CLAUDE.md` anchor section **and** the base prompt it imports (`layout.base_prompt`) — these are
      one unit: removing the anchor while leaving the file orphans it, and removing the file while
      leaving the anchor leaves a broken import in the human's `CLAUDE.md`
-   - the config frontmatter itself
+   - the config itself — `_Configuration_/Configuration.yaml`, or the legacy `okf_*` frontmatter in
+     `{Metadata_Dir}/index.md` on a pre-0.5.0 bundle
 
 
 ## Step 2 — Ask what to remove
@@ -50,8 +78,10 @@ Use the AskUser tool. **Never assume "uninstall" means "remove everything".**
 3. **The `CLAUDE.md` anchor and its base prompt** — remove both, or keep the base prompt as ordinary
    documentation and drop only the import? Offer inlining the base prompt back into `CLAUDE.md` as a
    third option: it is what a human who wants the guidance but not the plugin usually means.
-4. **The config frontmatter** in `{Metadata_Dir}/index.md` — remove, or keep so a future reinstall
-   remembers the settings?
+4. **The config** — `_Configuration_/Configuration.yaml` (or the legacy `okf_*` frontmatter in
+   `{Metadata_Dir}/index.md`) — remove, or keep so a future reinstall remembers the settings? Leave
+   `okf_version` in `index.md` alone unless the whole bundle is being dismantled; it is the one
+   spec-defined key, and OKF §12 puts it there.
 
 
 ## Step 3 — Dry run, then confirm
@@ -88,7 +118,7 @@ Warm, joyous, plain. Then a table, because the point is that they can see exactl
 | `Notes/_Plans_/_ReviewReports_/` | **Kept** | 2 reports preserved |
 | `CLAUDE.md` anchor | Removed | — |
 | Base prompt (`layout.base_prompt`) | Removed / inlined / kept | — |
-| Config frontmatter | **Kept** | A reinstall will remember your settings |
+| `Configuration.yaml` | **Kept** | A reinstall will remember your settings |
 
 Close with:
 

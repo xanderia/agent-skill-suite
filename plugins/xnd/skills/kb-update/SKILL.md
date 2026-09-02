@@ -26,6 +26,27 @@ This skill's instructions were written against OKF spec commit **`62432a09`** (2
 [Phase 1b](#phase-1b--self-update) updates this line when the spec moves.
 
 
+## First — state your version
+
+Open with one line naming the skill and the plugin version you are running:
+
+> 🦁 Knowledge Base Sync — plugin v<version>
+
+Resolve `plugin.json` by trying, in order, until one exists:
+
+1. `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`
+2. `.claude-plugin/plugin.json` two levels up from this skill's own directory — this file lives at
+   `plugins/<name>/skills/<skill>/SKILL.md`, so the manifest is `../../.claude-plugin/plugin.json`
+3. `{layout.skill_source}/.claude-plugin/plugin.json`, when the project vendors the suite
+
+If none resolves, say `plugin version unknown` and carry on. **This is never a reason to stop**, and
+it is not worth a retry loop.
+
+**Never hardcode the version into this file.** `plugin.json` is the single source of truth; a copy
+here would be a second one, and it would drift — the same reasoning that keeps `okf_version` out of
+`Configuration.yaml`.
+
+
 ## Step 0 — Resolve configuration
 
 1. **Read `CLAUDE.md` from disk** (or `AGENTS.md` if no `CLAUDE.md`) with the Read tool, and look for
@@ -161,9 +182,13 @@ Each created folder gets an `index.md`.
    its directory's `index.md`) carrying the resolved config, the verifier instruction, the naming
    conventions, the immutable-zone and archiving rules, and this rule:
 
-   > **Adding a knowledge base.** When asked to add a KB, ask whether it should be **simple** (one
-   > folder, several files) or **complex** (sub-folders per separable vendor sub-service or
-   > component). Pre-evaluate which fits the subject and mark that one `(recommended)`.
+   > **Adding a knowledge base.** When asked to add a KB, ask **two** questions before writing
+   > anything, each with one option pre-marked `(recommended)`:
+   >
+   > 1. **Shape** — **simple** (one folder, several files) or **complex** (sub-folders per separable
+   >    vendor sub-service or component). Pre-evaluate which fits the subject.
+   > 2. **Version** — which release to document. Establish *both* the version(s) the project actually
+   >    uses and the newest one upstream publishes, then ask. Never pin silently.
 
 3. **The anchor** in `CLAUDE.md` — a short section, nothing more:
 
@@ -226,6 +251,24 @@ Runs first on every maintain run. It is cheap, and everything after it assumes t
    A stale base prompt is the worst failure this skill has, because it is invisible: the file is
    expanded into context at launch and still *reads* like instruction while teaching the wrong rules.
    Where the project's verifier can check this (XND's does), say so in the report.
+7. **Check distribution drift** — one small fetch, and **the direction depends on `layout.skill_source`**,
+   which is what distinguishes a publisher from a consumer. Getting this backwards is the whole trap:
+   a project that vendors the source will never have an update waiting for it, because it *is* the
+   update.
+
+   Read the version from the published manifest — prefer the raw file
+   (`https://raw.githubusercontent.com/<owner>/<repo>/<default-branch>/plugins/<name>/.claude-plugin/plugin.json`)
+   over the rendered repository page; it is a few hundred bytes and needs no parsing. Derive the URL
+   from `repository` in the local `plugin.json` rather than hardcoding it.
+
+   | `layout.skill_source` | Meaning | Compare | On drift |
+   | :--- | :--- | :--- | :--- |
+   | **Set** | The project vendors the source — it *is* upstream | local vs published | Local ahead → report unpublished work and name the publish command from the suite's own `MAINTAINING.md`. **Never suggest updating.** Published ahead → someone else pushed; flag it as a genuine conflict to reconcile by hand |
+   | **Absent** | Read-only marketplace install — a consumer | published vs installed | Published ahead → say so, name the versions, and suggest the human update. **Never self-update an installed plugin** |
+
+   Report it in Phase 7 as one line either way, including when versions match. Treat every failure —
+   offline, rate-limited, moved repository, absent `repository` field — as **skip and stay silent**.
+   A version check is a convenience; it must never block a maintenance run or spend a second attempt.
 
 #### Anchor constraints
 
@@ -445,6 +488,45 @@ scheme. A package registry gives honest semver. A git-hosted spec gives a commit
 the OKF spec changed materially on 2026-08-21 while still declaring `Version 0.2`. A documentation
 site with neither gives only the date you fetched it. `kind` tells a consumer whether comparing two
 values with `>` means anything.
+
+### Choosing the version to document
+
+**When creating an external KB — simple or complex — never pick the version silently.** Establish
+both candidates, then ask. The two are different questions and frequently have different answers:
+
+1. **What the project uses.** Read it from the evidence, not from one file: manifest ranges
+   (`package.json`), resolved lockfile entries, the installed binary (`<tool> --version`), container
+   base images, and any `packageManager`/`engines` pin. **Report each separately when they disagree.**
+   That disagreement is not noise to be averaged away — it is KB content, and often the most valuable
+   gotcha the KB will carry.
+2. **What upstream publishes now.** A registry `latest`, a releases endpoint, or the docs site.
+
+Then ask which to document, marking one `(recommended)`:
+
+* **Recommend the in-use version by default.** A KB's primary job is to describe the code that
+  actually runs; a reader debugging production needs the behaviour they have, not the behaviour they
+  could have.
+* **Recommend the newest** when the gap spans a major or a substantial minor and the human's intent is
+  to evaluate or plan an upgrade. Say what the gap contains, so the choice is informed.
+
+Record the answer in `gotchas.md` `upstream:` as always. **When the documented version is newer than
+the in-use version, the KB must additionally carry both of these** — the inversion is a trap
+otherwise, because every unavailable API reads as available:
+
+* An inline marker on every fact that does not hold on the in-use version — `[1.4]`, `[v3]`,
+  whatever matches the `kind`. Unmarked content must be true for *both*.
+* A banner on the KB's root `index.md` naming both versions, stating the marker convention, and
+  saying plainly that a marked feature missing from the reader's binary means the KB is ahead of
+  them, not wrong.
+
+> **Worked example.** The XANDERIA Bun KB was re-pinned from 1.3.14 to 1.4.0 on 2026-09-03 at the
+> human's request, while the installed binary stayed at 1.3.14, the repo pinned `bun@1.3.6` and the
+> Docker base floated on `oven/bun:1`. Four versions, one KB. The `[1.4]` marker plus a root-index
+> banner is what keeps that honest and usable.
+
+The same question applies on a **re-pin** during [Phase 3](#phase-3--upstream-verification-external-kbs):
+if verification finds the KB pinned to a version the project no longer uses, ask before moving it.
+Silently re-pinning discards the record of what the last verification actually checked.
 
 ### The central index is generated, not authored
 

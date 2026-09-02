@@ -3,6 +3,143 @@
 The skills are prompts, so behaviour changes do not show up as code diffs. Everything that changes
 what the plugin *does* is recorded here.
 
+## 0.8.0 — 2026-09-03
+
+**Every skill states its version; one skill checks for drift.** Previously the version lived in
+`plugin.json` and nothing surfaced it, so a run left no record of which version produced it — worst
+for `project-review`, whose reports are immutable and dated.
+
+- **All three skills open with their version**, read from `plugin.json` at runtime — resolved via
+  `${CLAUDE_PLUGIN_ROOT}`, then relative to the skill's own directory, then `layout.skill_source`. An
+  unresolvable manifest prints `plugin version unknown` and never blocks the run. **The version is
+  never hardcoded into a `SKILL.md`**, and the illustrative banners deliberately read `v<version>`
+  rather than a number that would go stale every release.
+- **`project-review` stamps `reviewer: xnd-plugin/<version>` into the report frontmatter.** A finding
+  from v0.4.0 and one from v0.9.0 are not comparable evidence, and a `diff` run now says when the two
+  reports it compares came from different versions — otherwise a newly-added dimension reads as a
+  regression.
+- **`kb-update` Phase 0 gained a distribution-drift check**, and **its direction is gated on
+  `layout.skill_source`** — the same key that already separates a vendoring publisher from a
+  read-only consumer for Phase 1b:
+
+  | `skill_source` | Compare | On drift |
+  | :--- | :--- | :--- |
+  | Set (vendored — the project *is* upstream) | local vs published | Local ahead → report unpublished work and name the publish command. **Never suggest updating** |
+  | Absent (marketplace install) | published vs installed | Published ahead → suggest the human update. Never self-update in place |
+
+  Getting this backwards is the trap the check exists to avoid: a project that vendors the source
+  will never have an update waiting, because it *is* the update. Measured on XANDERIA at the time of
+  writing — local `0.7.0`, published `0.1.0` — an unconditional "is a newer version out?" check would
+  have answered "no" forever while six minor versions of unpublished work went unreported.
+
+  It fetches the raw manifest rather than the rendered repository page, derives the URL from
+  `repository` in the local `plugin.json`, and treats **every** failure as skip-and-stay-silent. A
+  version check must never block a maintenance run.
+- **`project-review` and `plugin-uninstall` make no network calls at all.** The review already forbade
+  itself upstream fetches; an upgrade prompt during an uninstall is pure noise.
+- **Fixed: `plugin-uninstall` still read config from `{Metadata_Dir}/index.md` frontmatter** — the same
+  pre-0.5.0 staleness found in `project-review` for 0.7.0. Step 1, the Step 1 inventory, the Step 2
+  question and the Step 5 report row all now name `_Configuration_/Configuration.yaml`, with the
+  legacy frontmatter as a documented fallback, and the Step 2 question protects `okf_version` where
+  OKF §12 puts it.
+
+## 0.7.0 — 2026-09-03
+
+**`project-review` now audits the configuration file itself.** Previously the config was only an
+*input* to the review — the skill read a few keys and audited everything else against them. It is now
+also a *subject*: dimension 10 checks the project against the config **and** the config against the
+project.
+
+- **New core dimension 10, `Configuration Conformance`.** *Prioritized Next Steps* moves to 11; every
+  other dimension keeps its number, so existing references to "core dimension 9" stay valid. It
+  covers naming adherence (`naming.files`, `folders`, `dates_in_filenames`, honouring both reserved
+  lists before reporting), vocabulary drift in **both directions**, ignore reconciliation, and
+  `layout`/`zones` internal consistency.
+- **The enforcement gap is the headline check.** For each key the review must state what actually
+  enforces it — verifier, hook, CI, or nothing — and is explicitly told **not to assume a key is
+  enforced because the config declares it**, but to read the verifier's behaviour or source. A rule
+  nothing checks is worse than no rule: every other dimension audits against it in good faith and
+  inherits false confidence. This was not hypothetical. In XANDERIA, 8 of ~12 keys turned out to have
+  no enforcement at all — the three `naming.*` values were read only to string-match them into the
+  base prompt's table, `vocabulary.tags` had zero references anywhere, and `isReserved` was hardcoded
+  to `index.md`/`log.md`, ignoring the configured reserved lists entirely.
+- **Not a second linter.** Where the project has a verifier, the dimension says to run it, take what
+  it proves, and spend the expensive judgement on what a linter cannot check.
+- **Ignore reconciliation names its two asymmetric failure modes**: *ignored-but-present* (the review
+  may have silently skipped something the bundle depends on — it must say what it did not read) and
+  *present-but-unignored* (build output and vendored trees inflating retrieval surface and the cost
+  of every future review). When `zones.ignore` links to a VCS ignore file, the review must judge
+  whether that file is a *good* ignore source for a knowledge bundle — it was written to keep
+  artifacts out of version control, a related but different question.
+- **Fixed: Step 1 read the config from the wrong place.** It still pointed at `okf_*` frontmatter in
+  `{Metadata_Dir}/index.md` — the pre-0.5.0 location — while naming the post-0.5.0 grouped keys, so
+  it would have found almost nothing. It now reads
+  `{Metadata_Dir}/_Configuration_/Configuration.yaml`, resolved case-insensitively and accepting
+  `.yaml`/`.yml` since the project's own naming convention governs how `kb-update` created it, and
+  **reports a bundle still on the legacy layout** instead of silently proceeding.
+- **New `config` argument** — expands dimension 10 into the main deliverable, with a per-key table of
+  declared / enforced-by / complies.
+- Phase 2 now names `zones.ignore` and `zones.generated` explicitly and asks the scan to record
+  discrepancies as it goes, since the substance scan is the only moment the real tree is in view.
+
+## 0.6.0 — 2026-09-03
+
+**Creating an external KB now asks which version to document.** Previously the version was chosen
+silently — in practice, whatever the project happened to have installed — and the choice was never
+put to the human.
+
+- **`kb-update` asks two questions when adding a KB, not one.** Shape (simple/complex) was already
+  asked; **version** is now asked alongside it, with one option pre-marked `(recommended)`.
+- **Both candidates must be established before asking**: what the project actually uses — read from
+  manifest ranges, resolved lockfiles, the installed binary, container base images and any
+  `packageManager`/`engines` pin — *and* what upstream publishes now. **Disagreement among the
+  in-use sources is reported rather than averaged away**, because that disagreement is usually the
+  most valuable gotcha the KB will carry.
+- **Default recommendation is the in-use version**; newest is recommended when the gap spans a major
+  or substantial minor and the intent is to evaluate an upgrade.
+- **New rule for the inverted case.** When the documented version is *newer* than the in-use one, the
+  KB must carry an inline marker on every fact that does not hold on the in-use version (`[1.4]`,
+  `[v3]`, …) plus a banner on its root `index.md` naming both. Unmarked content must be true for
+  both. Without this the inversion is a trap: every unavailable API reads as available.
+- The same question now applies to a **re-pin** during Phase 3 — silently re-pinning discards the
+  record of what the last verification actually checked.
+- New `### Choosing the version to document` section under *External KB metadata*, with the
+  XANDERIA Bun KB (pinned to 1.4.0 while the binary is 1.3.14) as the worked example.
+
+This is a deliberate behaviour change requested by the human, **not** a Phase 1b self-update — Phase
+1b forbids redesign during spec translation, and no spec change prompted this.
+
+## 0.5.0 — 2026-09-03
+
+**Configuration moved out of frontmatter into a file of its own.** Breaking for existing installs;
+`kb-update` migrates them automatically on the next run.
+
+- **`{Metadata_Dir}/_Configuration_/Configuration.yaml`** replaces the `okf_*` keys that used to live
+  in the bundle-root `index.md` frontmatter. Keys are grouped (`spec`, `layout`, `naming`,
+  `vocabulary`, `zones`) and the redundant `okf_` prefix is gone. YAML gives the config nesting, lists
+  and comments — none of which frontmatter-inside-a-reserved-file could express.
+- **`okf_version` deliberately stays in `index.md`.** It is the one spec-defined key, and OKF §12 puts
+  it there, which is where a spec-only consumer looks. Everything else moved. No key lives in two
+  places.
+- **Phase 0 gained a config migration**: a bundle still carrying `okf_*` frontmatter has those keys
+  moved into the new file, `okf_version` left behind, and the migration reported.
+- **Phase 0 regenerates the base prompt mechanically.** Its `## Bundle Configuration` table is
+  generated and quotes every value **verbatim in a code span** — `` `title-case` ``, never a prose
+  paraphrase, because a paraphrase cannot be checked and an uncheckable claim drifts. Comparison is by
+  re-rendering, not by a stored checksum: a hash would be a second source of truth about the same fact.
+- The review contract moved from `{Metadata_Dir}/ReviewConfiguration.md` to
+  `{Metadata_Dir}/_Workflows_/Review Prompt.md`, beside the base prompt — it is a prompt users adapt,
+  not configuration. New `layout.review_prompt` key.
+- **Immutability gained a second sanctioned exception**: a project-wide naming migration, explicitly
+  authorised by the human, may *rename* files inside an immutable zone — path only, never content. The
+  cost is stated plainly in the rule, because a concept's identity is its path.
+- New keys: `layout.base_prompt`, `layout.review_prompt`, `layout.skill_source`, `naming.reserved`,
+  `naming.reserved_folders`, `vocabulary.tags`.
+
+> **Upgrading:** nothing to do. Run `/xnd:kb-update` and Phase 0 performs the migration, reporting what
+> it moved. Pre-1.0 semver puts a breaking change in the minor position; `MAINTAINING.md`'s table
+> classifies this as major in spirit.
+
 ## 0.4.0 — 2026-08-31
 
 **External-KB metadata, and one more archiving step.**

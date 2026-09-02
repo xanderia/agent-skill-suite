@@ -15,6 +15,28 @@ audit against all come from the project's own configuration — never from assum
 file.
 
 
+## First — state your version
+
+Open with one line naming the skill and the plugin version you are running, alongside the cost
+confirmation below, so the human sees which reviewer they are about to spend on:
+
+> 🦁 Deep Review — plugin v<version>
+
+Resolve `plugin.json` by trying, in order, until one exists:
+
+1. `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`
+2. `.claude-plugin/plugin.json` two levels up from this skill's own directory — this file lives at
+   `plugins/<name>/skills/<skill>/SKILL.md`, so the manifest is `../../.claude-plugin/plugin.json`
+3. `{layout.skill_source}/.claude-plugin/plugin.json`, when the project vendors the suite
+
+If none resolves, say `plugin version unknown` and carry on. **Never hardcode the version into this
+file** — `plugin.json` is the single source of truth, and a copy here would drift.
+
+**Do not check whether a newer version exists.** This skill makes no network calls, for the same
+reason it does not fetch upstream documentation: that is `/xnd:kb-update`'s job, and it does it as
+part of Phase 0. Read the local version, state it, move on.
+
+
 ## Step 0 — Cost confirmation
 
 **Before reading anything**, use the AskUser tool to confirm the human understands the cost:
@@ -32,13 +54,22 @@ area — the human has already signalled they know what they are asking for.
 
 ## Step 1 — Resolve configuration
 
-1. Read `CLAUDE.md` (or `AGENTS.md`) and the config frontmatter in `{Metadata_Dir}/index.md` — the
-   same keys `/xnd:kb-update` writes. You need `layout.root`, `layout.metadata_dir`, `zones.immutable`,
-   `vocabulary.types`, `vocabulary.tags`, the date format, and `title`.
-2. Read **`{Metadata_Dir}/_Workflows_/Review Prompt.md`** — the project's own review contract. It declares
+1. Read `CLAUDE.md` (or `AGENTS.md`).
+2. Read the bundle config — **`{Metadata_Dir}/_Configuration_/Configuration.yaml`**, the file
+   `/xnd:kb-update` writes. **Resolve it tolerantly**: match the directory and filename
+   case-insensitively and accept `.yaml` or `.yml`, because the project's own naming convention
+   governed how `kb-update` created it. If it is absent, look for the superseded shape — `okf_*` keys
+   in `{Metadata_Dir}/index.md` frontmatter — and if you find it, **report that the bundle is on a
+   pre-0.5.0 config layout** and needs a `/xnd:kb-update` run to migrate. `okf_version` legitimately
+   still lives in `index.md`; read it there in either case.
+3. **Read the config in full, not only the keys you need to proceed.** It is both an input to this
+   review and a *subject* of it: [dimension 10](#core-dimensions) audits the project against the
+   config **and** the config against the project. At minimum you need `layout.*`, `zones.*`,
+   `naming.*`, `vocabulary.types`, `vocabulary.tags`, `verifier` and `title`.
+4. Read **`{Metadata_Dir}/_Workflows_/Review Prompt.md`** — the project's own review contract. It declares
    which dimensions apply, which to skip, which to add, and the project-specific conventions to audit
    against.
-3. If `Review Prompt.md` does not exist, say so, run the [core dimensions](#core-dimensions)
+5. If `Review Prompt.md` does not exist, say so, run the [core dimensions](#core-dimensions)
    only, and offer to generate a starter file at the end.
 
 
@@ -80,7 +111,13 @@ Read the project's actual content — source code, manuscript, catalogue, whatev
 `Review Prompt.md` declares the layers and their dependency order; follow it. Absent that,
 derive an order from the dependency graph: most foundational first, most dependent last.
 
-Exclude what the ignore configuration excludes, plus lockfiles and generated output.
+Exclude whatever `zones.ignore` resolves to — the project's VCS ignore file read live, or a dedicated
+list — plus lockfiles and anything `zones.generated` declares.
+
+**Keep a note of the discrepancies as you go.** What did you have to skip that the ignore source never
+mentioned, and what does it exclude that turned out to matter? This scan is the only moment you see
+the real tree, so it is the only moment those are cheap to notice. They are
+[dimension 10](#core-dimensions) findings.
 
 **Triage rules for large files:**
 
@@ -103,22 +140,38 @@ Exclude what the ignore configuration excludes, plus lockfiles and generated out
      the plan being updated?
 2. **Convention compliance** — spot-check the conventions `Review Prompt.md` declares. Report
    the top three most common deviations, with counts.
-3. **Gap identification** — what does the documentation promise that reality does not deliver? What
+3. **Configuration conformance** — check the project against its own config file, and the config file
+   against the project. Naming rules versus real filenames, `vocabulary` versus tags and types in
+   use, `zones.ignore` versus what the tree actually holds, `layout` paths versus what exists. Feed
+   [dimension 10](#core-dimensions); the method is described there.
+4. **Gap identification** — what does the documentation promise that reality does not deliver? What
    exists but is undocumented?
-4. **Dependency analysis** — where applicable, read manifests for outdated, duplicated or
+5. **Dependency analysis** — where applicable, read manifests for outdated, duplicated or
    security-relevant packages.
-5. **Bundle audit** — walk concept frontmatter for the knowledge-bundle dimensions: description
+6. **Bundle audit** — walk concept frontmatter for the knowledge-bundle dimensions: description
    quality, tag health, `type` correctness, link graph, trust-tier distribution, reserved-file
    conformance.
-6. **Staleness audit** — for each external KB, compare its asserted versions against the versions
+7. **Staleness audit** — for each external KB, compare its asserted versions against the versions
    actually installed or deployed.
-7. Any additional audits `Review Prompt.md` declares.
+8. Any additional audits `Review Prompt.md` declares.
 
 
 # Phase 4 — Write the report
 
 Write to `{Metadata_Dir}/_Plans_/_ReviewReports_/ReviewReport-<date>.md` using the project's
 configured date format. Include OKF frontmatter with the project's report type.
+
+**Record which reviewer produced the report.** Reports are immutable and dated, so a finding written
+by v0.4.0 and one written by v0.9.0 are not comparable evidence — and nothing else in the file says
+which ran. Stamp the version resolved above into the frontmatter beside `generated`:
+
+```yaml
+reviewer: xnd-plugin/0.7.0
+```
+
+Use `xnd-plugin/unknown` if the manifest did not resolve. A `diff` run should say when the two
+reports it compares were produced by different versions, because a "regression" can just be a
+dimension that did not exist before.
 
 Every dimension gets **Strengths / Concerns / Recommendations**.
 
@@ -173,7 +226,54 @@ Always applicable, in any project:
    **Do not fetch upstream documentation** — that is `/xnd:kb-update`'s job. Deliver a prioritized
    re-verification queue instead, as scoped invocations in the order they should be run, one line of
    reasoning each.
-10. **Prioritized Next Steps** — Consolidated and ranked: (a) quick wins under an hour, (b) medium
+10. **Configuration Conformance** — The config file is the bundle's constitution: nearly every other
+    dimension audits against rules *it* declares. So audit it too, and in **both directions** — does
+    reality obey the config, and does the config still describe reality?
+
+    *Naming adherence* — walk the tree and check real filenames and directory names against
+    `naming.files`, `naming.folders` and `naming.dates_in_filenames`. Honour `naming.reserved` and
+    `naming.reserved_folders` before reporting anything, or the report is mostly false positives.
+    **Cluster the violations and give each cluster a verdict.** One stray file is a fix; forty files
+    sharing a single pattern means the convention was adopted after they were written, or that the
+    rule itself is wrong — say which, because the remedies are opposite.
+
+    *Vocabulary health* — `type` values must come from `vocabulary.types`. Tags are the harder half,
+    and the interesting finding is directional: report tags **used but not declared** *and* tags
+    **declared but no longer used**, which nobody checks. Separate a tag missing from the vocabulary
+    because it is genuinely new from one missing because it is a near-miss of a declared tag — the
+    first is vocabulary growth, the second is a silent retrieval failure. Cross-check against
+    dimension 8 rather than repeating it: that one judges whether the vocabulary is *good*, this one
+    whether the declared vocabulary and the used vocabulary are the *same set*.
+
+    *Ignore reconciliation* — `zones.ignore` names either the project's VCS ignore file, linked live,
+    or a dedicated list. Read whichever it resolves to and reconcile it against the real tree. The
+    two failure modes are not symmetrical: **ignored-but-present** (something the ignore source
+    excludes yet the bundle documents, indexes or depends on — this review may have silently skipped
+    it, so say what you did not read) and **present-but-unignored** (build output, caches, vendored
+    trees the config never excluded, inflating retrieval surface and the cost of every future
+    review). When `zones.ignore` links to a VCS ignore file, state plainly whether that file is a
+    *good* ignore source for a knowledge bundle: it was written to keep artifacts out of version
+    control, which is a related but genuinely different question, and any divergence between those
+    two purposes is itself the finding.
+
+    *Enforcement gap* — **the highest-value output of this dimension.** For each key, state what
+    actually enforces it: the verifier, a hook, CI, or nothing. **Do not assume a key is enforced
+    because the config declares it** — check the verifier's behaviour or its source. A key nothing
+    enforces is a rule that exists only in prose, and the project will drift from it silently while
+    the config goes on asserting otherwise, which is worse than having no rule because it
+    manufactures false confidence in every other dimension that trusts it. List these explicitly and
+    recommend, per key, either a home for enforcement or deletion of the key.
+
+    *Internal consistency* — `layout` paths that point at nothing; zone globs matching nothing;
+    `zones.generated` files that have been hand-edited anyway. Treat the exemption lists as the place
+    where conventions go to die quietly: every entry in `naming.reserved` and `reserved_folders`
+    should still be earning its place and carrying a stated reason. An exemption whose reason no
+    longer holds is a convention that was repealed without anyone deciding to repeal it.
+
+    **Where the project has a verifier, confirm rather than re-derive.** Run it, take what it already
+    proves, and spend this dimension on what it cannot check — which, in practice, is most of the
+    config.
+11. **Prioritized Next Steps** — Consolidated and ranked: (a) quick wins under an hour, (b) medium
     efforts around a day, (c) strategic investments of a week or more. Each references the dimension
     it addresses and is formatted as a ready plan input.
 
@@ -204,6 +304,10 @@ buries a serious finding is worse than no summary.
 - **dimension keyword** — read everything, expand that dimension substantially.
 - **`okf`** — walk *every* concept's frontmatter rather than sampling, and produce a per-file table
   of proposed tag/type/structure changes ready to hand to `/xnd:kb-update`.
+- **`config`** — expand dimension 10 into the main deliverable. Check **every** file and directory
+  name against the naming rules rather than sampling, enumerate the full used-vs-declared tag and
+  type sets in both directions, reconcile the ignore source line by line, and produce a per-key table
+  of the config: what it declares, what enforces it, and whether reality complies.
 - **`staleness`** — read every chapter of every external KB rather than just the entry points,
   cross-check each version claim against the installed pin, and give a per-chapter safe/stale
   verdict. Still offline; still no upstream fetching.
