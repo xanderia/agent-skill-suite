@@ -299,7 +299,21 @@ the rest repairs. Its checks are the full list of what a sound installation look
    A stale base prompt is the worst failure this skill has, because it is invisible: the file is
    expanded into context at launch and still *reads* like instruction while teaching the wrong rules.
    Where the project's verifier can check this (XND's does), say so in the report.
-9. **Check distribution drift** — one small fetch, and **the direction depends on `layout.skill_source`**,
+9. **Walk `Update Migration.md`.** It ships with the plugin: read
+   `${CLAUDE_PLUGIN_ROOT}/Update Migration.md`, or `../../Update Migration.md` from this skill's
+   directory. It lists, version by version, what an existing installation must check and fix. Run
+   every entry's *Detect*. Never assume which version the project came from; each *Detect* is safe on
+   any install.
+   - ***Fix by* `kb-update`, automatic**: the step it names, above or in a later phase, does the work.
+     Confirm that it did.
+   - ***Fix by* `kb-update`, from this file**: apply the written *Fix* now, within the
+     [hard rules](#hard-rules).
+   - ***Fix by* `kb-update`, per KB**: leave it to Phase 3. Note which KBs it affects.
+   - ***Fix by* you**: report it under *What needs you*, with the entry's options.
+
+   In Phase 7, list every entry that matched by its ID (for example `0.9.0-A`), with what was done or
+   what is waiting. Entries that did not match need no mention.
+10. **Check distribution drift** — one small fetch, and **the direction depends on `layout.skill_source`**,
    which is what distinguishes a publisher from a consumer. Getting this backwards is the whole trap:
    a project that vendors the source will never have an update waiting for it, because it *is* the
    update.

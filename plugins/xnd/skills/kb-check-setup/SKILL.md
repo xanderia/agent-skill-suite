@@ -209,6 +209,13 @@ Then:
      *Project instructions* setting (which applies to that user only). Give the trade-off of each in
      one line.
 
+**Cite the migration entry.** The plugin ships `Update Migration.md`
+(`${CLAUDE_PLUGIN_ROOT}/Update Migration.md`, or `../../Update Migration.md` from this skill's
+directory). It lists what each version needs from an existing installation. When a finding matches
+one of its entries, add the entry's ID (for example `0.9.0-A`) to the finding, so the human can look up
+the background and the fix. Do not walk its other entries: anything outside this skill's checks is
+`/xnd:kb-update`'s job.
+
 State plainly anything you could not check, such as a file you were not permitted to read. A clean
 report that skipped a check is worse than an honest partial one.
 

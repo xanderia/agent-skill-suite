@@ -3,6 +3,31 @@
 The skills are prompts, so behaviour changes do not show up as code diffs. Everything that changes
 what the plugin *does* is recorded here.
 
+## 0.10.0 — 2026-10-05
+
+**`Update Migration.md`: what an existing installation needs, version by version.** This file says what
+changed in the plugin. The new [`plugins/xnd/Update Migration.md`](plugins/xnd/Update%20Migration.md)
+says what to **check and fix in your project**, so an install made with an older version ends up
+where a fresh install would put it.
+
+- **15 entries, from 0.2.0 to 0.9.0.** Each has an ID (`0.9.0-A`), a severity (🔴 broken, 🟠 drift,
+  🟢 improvement), and *Detect*, *Fix* and *Verify* steps, plus a *Fix by*: `kb-update` automatically,
+  `kb-update` from the file, `kb-update` per KB, or **you**.
+- **Version-agnostic by construction.** Every *Detect* is safe on any installation, and every *Fix* is
+  a no-op when *Detect* finds nothing. Nothing records which version last touched a project, so there
+  is no "last version" value to drift.
+- **It ships inside the plugin** (`plugins/xnd/`), not at the repository root: an installed plugin
+  receives only its own directory, and the skills must be able to read the file.
+- **`kb-update` Phase 0 step 9 walks it.** It runs every *Detect*, applies the fixes that are its job
+  within its hard rules, leaves per-KB fixes to Phase 3, reports the rest under *What needs you*, and
+  lists every matched entry by ID in Phase 7. Distribution drift moves to step 10.
+- **`kb-check-setup` cites entry IDs** in its findings. It does not walk the file; it stays read-only
+  and within its own checks.
+- **Found while writing it:** the 0.5.0 move of `ReviewConfiguration.md` to
+  `_Workflows_/Review Prompt.md` was never automated. An install still on the old path ran
+  `/xnd:project-review` with the core dimensions only, silently ignoring its own dimensions. That is
+  entry `0.5.0-B`, and `kb-update` now applies it.
+
 ## 0.9.0 — 2026-10-05
 
 **`AGENTS.md` support, a read-only setup check, and a fix for a base prompt that never loaded.** Run

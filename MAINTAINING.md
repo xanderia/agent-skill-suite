@@ -16,6 +16,7 @@ Code/AgentSkillSuite/       ──subtree──▶   xanderia/agent-skill-suite
   plugins/xnd/                               plugins/xnd/…
     .claude-plugin/plugin.json
     skills/{kb-check-setup, kb-update, project-review, plugin-uninstall}/SKILL.md
+    Update Migration.md                      ← ships with the plugin; kb-update walks it
   README.md · MAINTAINING.md · CHANGELOG.md
 ```
 
@@ -61,6 +62,14 @@ to itself, and the one to apply by hand:
 Record every release in [CHANGELOG.md](CHANGELOG.md). The skills are prompts, not code — a behaviour
 change is invisible in a diff unless someone writes it down.
 
+If the release changes what an existing installation should contain, also add an entry to
+[Update Migration.md](plugins/xnd/Update%20Migration.md). That covers a new file, key, location or
+rule, and a fixed bug that left damage in projects. Its closing section, *Writing an entry*, has the
+rules: stable IDs, a *Detect* that works on any version, a *Fix* that is a no-op when nothing is
+detected, and an honest *Fix by*. The changelog says what the plugin does now; the migration file
+says what a project has to do about it. Without that entry, an older install stays in its old shape
+and no error ever shows.
+
 ## The spec baseline
 
 `kb-update` tracks the [OKF specification](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
@@ -80,7 +89,8 @@ that key the skill reports what needs changing rather than editing a read-only m
 claude plugin validate . --strict     # marketplace + plugin manifests; --strict is the CI gate
 ```
 
-Then: bump the version, write the changelog entry, dogfood the install once, and push the subtree.
+Then: bump the version, write the changelog entry and any `Update Migration.md` entry, dogfood the
+install once, and push the subtree.
 
 **Check that the anchor still loads.** An `@` import that fails says nothing, and one did for five
 releases. In a project using the plugin, run `/xnd:kb-check-setup` from a fresh session. It's

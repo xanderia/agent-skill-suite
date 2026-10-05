@@ -46,6 +46,10 @@ again.** Every run after that just does the work and hands you a short, readable
 
 Already using OKF? It detects what you have and adopts it rather than overwriting.
 
+**Upgrading from an older version?** Run `/xnd:kb-check-setup`, then `/xnd:kb-update`. The update
+walks [Update Migration.md](plugins/xnd/Update%20Migration.md), which lists what each version needs
+from an existing installation. It fixes what it can, and tells you what needs your decision.
+
 **Works with `AGENTS.md` or `CLAUDE.md`.** The setup adds a short section to whichever instruction
 file your project already uses, pointing at one generated rules file. The plugin doesn't pick a side:
 it gives your agent the facts (which file Claude loads, when a `CLAUDE.md` hides an `AGENTS.md`) and
@@ -133,7 +137,8 @@ for you before it fails for anyone else.
 [MAINTAINING.md](MAINTAINING.md) covers the repository topology, how releases are versioned and
 published, and the spec-baseline rule. [CHANGELOG.md](CHANGELOG.md) records every behaviour change —
 worth reading before an upgrade, because the skills are prompts and a behaviour change leaves no trace
-in a code diff.
+in a code diff. [Update Migration.md](plugins/xnd/Update%20Migration.md) is its practical counterpart:
+what to check and fix in a project installed with an older version.
 
 ## Licence
 
