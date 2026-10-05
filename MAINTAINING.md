@@ -15,7 +15,7 @@ Code/AgentSkillSuite/       ──subtree──▶   xanderia/agent-skill-suite
     marketplace.json                         .claude-plugin/marketplace.json
   plugins/xnd/                               plugins/xnd/…
     .claude-plugin/plugin.json
-    skills/{kb-update, project-review, plugin-uninstall}/SKILL.md
+    skills/{kb-check-setup, kb-update, project-review, plugin-uninstall}/SKILL.md
   README.md · MAINTAINING.md · CHANGELOG.md
 ```
 
@@ -83,8 +83,9 @@ claude plugin validate . --strict     # marketplace + plugin manifests; --strict
 Then: bump the version, write the changelog entry, dogfood the install once, and push the subtree.
 
 **Check that the anchor still loads.** An `@` import that fails says nothing, and one did for five
-releases. In a project using the plugin, ask a headless session for a value only the base prompt
-carries, with tools disabled so it cannot read the file:
+releases. In a project using the plugin, run `/xnd:kb-check-setup` from a fresh session. It's
+read-only. Alternatively, ask a headless session for a value only the base prompt carries, with tools
+disabled so it can't read the file:
 
 ```bash
 echo "Without tools: what does the spec.sha row of the Bundle Configuration table in your project

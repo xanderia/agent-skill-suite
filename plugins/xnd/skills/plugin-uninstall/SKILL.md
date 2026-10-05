@@ -48,9 +48,9 @@ and nothing more.
    lives in `index.md` either way.
 
    Then find the `<!-- okf:installed -->` marker. **Read both root `AGENTS.md` and root `CLAUDE.md`
-   from disk with the Read tool**, whichever exist — the anchor may be in either, and `AGENTS.md` is
-   where `/xnd:kb-update` puts a new one. The file holding the marker is *the instruction file* for
-   the rest of this run; a `CLAUDE.md` symlinked to `AGENTS.md` is one file, edited as `AGENTS.md`.
+   from disk with the Read tool**, whichever exist — the anchor may be in either. The file holding
+   the marker is *the instruction file* for the rest of this run; a `CLAUDE.md` symlinked to
+   `AGENTS.md` is one file, edited as `AGENTS.md`.
    Block-level HTML comments are stripped before a `CLAUDE.md` reaches the model, so checking context
    alone reports "not installed" for a perfectly good install. The base prompt's `@` import line is
    the visible counterpart. If neither marker nor config exists, say the plugin was never installed

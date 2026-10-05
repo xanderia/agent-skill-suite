@@ -15,6 +15,7 @@ questions the first time, then gets out of your way.
 | Skill | What it does |
 | :--- | :--- |
 | **`/xnd:kb-*`** — your knowledge base | |
+| `/xnd:kb-check-setup` | Checks that your setup actually works: which instruction file holds it, whether your agent loads it, and whether the rules really reached the session. **Read-only**: it changes nothing and fetches nothing, and tells you what would fix each problem |
 | `/xnd:kb-update` | Sets up a knowledge base, or keeps an existing one healthy — tracks changes to the OKF spec, migrates your files to match **and updates its own instructions to match too**, re-verifies your third-party reference docs against upstream, splits files that grew too big, sharpens summaries, and regenerates every index |
 | | |
 | **`/xnd:project-*`** — your whole project | |
@@ -45,10 +46,11 @@ again.** Every run after that just does the work and hands you a short, readable
 
 Already using OKF? It detects what you have and adopts it rather than overwriting.
 
-**Works with `AGENTS.md` or `CLAUDE.md`.** The setup adds a short section to your project's
-instruction file, pointing at one generated rules file, and it prefers `AGENTS.md`, which every
-coding agent reads. If you also have a `CLAUDE.md` that would hide your `AGENTS.md` from Claude, it
-asks before changing anything.
+**Works with `AGENTS.md` or `CLAUDE.md`.** The setup adds a short section to whichever instruction
+file your project already uses, pointing at one generated rules file. The plugin doesn't pick a side:
+it gives your agent the facts (which file Claude loads, when a `CLAUDE.md` hides an `AGENTS.md`) and
+asks before touching any other file. Unsure whether it's working? `/xnd:kb-check-setup` tells you,
+and changes nothing.
 
 ## How it adapts to your project
 

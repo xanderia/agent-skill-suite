@@ -49,33 +49,19 @@ here would be a second one, and it would drift — the same reasoning that keeps
 
 ## Instruction file
 
-The anchor lives in the project's agent instruction file — `AGENTS.md` or `CLAUDE.md`. This file
-calls the one in use `{Instructions_File}` and resolves it the same way on every run:
+The anchor lives in one of the project's agent instruction files, `AGENTS.md` or `CLAUDE.md`. This
+file calls the one holding it `{Instructions_File}`.
 
-1. **Read both from disk** — root `AGENTS.md` and root `CLAUDE.md`, whichever exist — with the Read
-   tool, and look for the install marker:
-
-   ```
-   <!-- okf:installed -->
-   ```
-
-   A `CLAUDE.md` that is a symlink to `AGENTS.md` is one file: treat it as `AGENTS.md`, since Edit and
-   Write refuse to write through a symlink.
-2. **An existing marker wins.** The file holding it is `{Instructions_File}`, even when it is the
-   non-preferred one. Never move a working anchor silently; if it sits in `CLAUDE.md` while an
-   `AGENTS.md` exists, suggest the move under *What needs you*. Both files carrying a marker is
-   drift — report it and ask which to keep.
-3. **No marker → `AGENTS.md` first.** `AGENTS.md` if it exists, else `CLAUDE.md` if it exists, else
-   create `AGENTS.md`. It is the file every coding agent reads; `CLAUDE.md` reaches only Claude.
-4. **Check that Claude Code will load it.** Claude Code reads `AGENTS.md` only when no `CLAUDE.md`,
-   `.claude/CLAUDE.md` or `CLAUDE.local.md` shadows it — unless that `CLAUDE.md` imports it
-   (`@AGENTS.md`) or is a symlink to it. An anchor in a shadowed `AGENTS.md` reaches every other agent
-   and silently never reaches Claude.
-   - **On install**, ask: **add `@AGENTS.md` as the first line of `CLAUDE.md` (recommended)**, or put
-     the anchor in `CLAUDE.md` instead.
-   - **On maintain**, report it under *What needs you*. Never edit `CLAUDE.md` unasked.
-
-   The same `@AGENTS.md` line is the fix for hosts that cannot load `AGENTS.md` natively.
+- **Read both from disk** with the Read tool. The `<!-- okf:installed -->` marker can be in either, and
+  context cannot be trusted (see the warning below).
+- **An existing anchor stays where it is.** Never move a working anchor. If both files carry a marker,
+  report it and ask which to keep.
+- **For a new install, choose.** The facts that decide it — which file Claude Code loads, when a
+  `CLAUDE.md` hides an `AGENTS.md`, how imports and symlinks behave, what other agents read — are in
+  [How agents load the instruction files](../kb-check-setup/SKILL.md#how-agents-load-the-instruction-files).
+  Put the anchor in the file the project already relies on. The one hard requirement is that Claude
+  Code loads it. If meeting that requirement needs a change to another file the human owns, such as
+  an `@AGENTS.md` line in `CLAUDE.md`, say what and why, and ask first.
 
 > ⚠️ **Read the files; do not trust context.** Block-level HTML comments are stripped from a
 > `CLAUDE.md` — and from whatever it imports — before it reaches the model, so the marker is
@@ -200,18 +186,7 @@ Ask whether a conformance CLI is available (for XANDERIA: `xnd notes verify`).
 
 Each created folder gets an `index.md`.
 
-### 7. Instruction file — only when Claude Code would not see it
-
-Skip this unless [Instruction file](#instruction-file) rule 4 applies: an `AGENTS.md` is the
-preferred target but a `CLAUDE.md` shadows it without importing it. Then ask:
-
-- **Add `@AGENTS.md` as the first line of `CLAUDE.md` (recommended)** — one shared file for every
-  agent; Claude reads `AGENTS.md` first, then the rest of `CLAUDE.md`. Say that this also pulls the
-  whole of `AGENTS.md` into Claude's context, which matters if the two files overlap.
-- **Anchor in `CLAUDE.md` instead** — leaves `AGENTS.md` untouched; other agents will not see the
-  base prompt.
-
-### 8. Write the install artifacts
+### 7. Write the install artifacts
 
 1. **`{Metadata_Dir}/_Configuration_/Configuration.yaml`** — every answer above, grouped under
    `spec`, `layout`, `naming`, `vocabulary`, `zones`, plus `verifier` and `title`. Write it with
@@ -229,6 +204,12 @@ preferred target but a `CLAUDE.md` shadows it without importing it. Then ask:
    >    vendor sub-service or component). Pre-evaluate which fits the subject.
    > 2. **Version** — which release to document. Establish *both* the version(s) the project actually
    >    uses and the newest one upstream publishes, then ask. Never pin silently.
+   >
+   > **An external KB describes upstream only.** Never write the project's own installed, pinned or
+   > deployed version into it. Keeping such a number true costs a KB edit on every upgrade, and nothing
+   > prompts that edit. Report a disagreement between the project's version sources to the human
+   > instead. The documented version, upstream markers like `[1.4]`, and dated `log.md` entries are
+   > fine.
 
 3. **The anchor** in `{Instructions_File}` — a short section, nothing more:
 
@@ -248,8 +229,8 @@ preferred target but a `CLAUDE.md` shadows it without importing it. Then ask:
    the import is for Claude Code. Keep both. See [Anchor constraints](#anchor-constraints) before
    writing it — the import path has rules.
 
-   If [Instruction file](#instruction-file) rule 4 applies and the human chose the `@AGENTS.md` line,
-   add it as the first line of `CLAUDE.md`.
+   If the human agreed to a change in another instruction file (see [Instruction file](#instruction-file)),
+   make exactly that change.
 
 4. A starter `{Metadata_Dir}/_Workflows_/Review Prompt.md` for `/xnd:project-review` to consume.
 5. Vendor the spec (see [Phase 1](#phase-1--spec-drift)).
@@ -262,6 +243,8 @@ Then run the maintain flow.
 ### Phase 0 — Verify the installation
 
 Runs first on every maintain run. It is cheap, and everything after it assumes the install is sound.
+Steps 1–3 are the diagnosis [`/xnd:kb-check-setup`](../kb-check-setup/SKILL.md) performs read-only;
+the rest repairs. Its checks are the full list of what a sound installation looks like.
 
 1. **Resolve `{Instructions_File}`** per [Instruction file](#instruction-file) — from disk; the marker
    is invisible from context.
@@ -271,7 +254,8 @@ Runs first on every maintain run. It is cheap, and everything after it assumes t
    the bundle's rules — the worst failure this skill has, and invisible from inside a session that
    never looks. Find the cause, fix what step 5 can fix, and report the rest under *What needs you*.
    Usual causes, most likely first: a `_Name_` segment in the path (step 5), an unescaped or quoted
-   space, an `AGENTS.md` shadowed by `CLAUDE.md` ([rule 4](#instruction-file)), a missing target.
+   space, an anchor file Claude Code does not load
+   ([the facts](../kb-check-setup/SKILL.md#how-agents-load-the-instruction-files)), a missing target.
 3. **Identify the shape:**
    - **Anchored** (current) — a heading, a marker comment, a sentence linking the base prompt, and
      an `@` import line of `layout.base_prompt`.
@@ -439,7 +423,10 @@ per-product sub-KBs; do not work from a hardcoded list:
 1. Read its `gotchas.md` (version notes) and `log.md` (when last verified, against what).
 2. Establish what the project **actually uses** before trusting the KB — `package.json` versions,
    lockfiles, infrastructure notes. A KB pinned to a version the project does not run is a different
-   problem from a KB that is merely stale.
+   problem from a KB that is merely stale. Use what you find to steer this pass, but **do not write
+   it into the KB**. Remove any back-reference to the project's versions you come across, per
+   [The KB never names the project's versions](#the-kb-never-names-the-projects-versions). If the
+   project's own sources disagree, report that under *What needs you*.
 3. Fetch the official documentation for the *pinned or currently-used* version. Prefer the KB's own
    recorded fetch strategy (many vendors expose `llms.txt` indexes or raw markdown via a `.md`
    suffix) — each KB's `log.md` records what worked last time.
@@ -597,10 +584,17 @@ otherwise, because every unavailable API reads as available:
 
 An external KB describes **upstream**. It must not state which version the project installs, pins,
 bundles or deploys: no "the installed binary is …", no "the repo pins `tool@…`", no "the Docker tag
-resolves to …", no table of the project's version sources. Each of those changes with a package-manager
-upgrade or an image rebuild, nothing in the KB tracks it, and a stale one still reads as verified. The
-in-use version is used **while writing**, to make the recommendation above and to decide which facts
-get a marker. It is never written down. A reader who needs it checks the project itself.
+resolves to …", no table of the project's version sources.
+
+**The reason is maintenance overhead.** Every package-manager upgrade or image rebuild would need a
+matching KB edit. Nothing prompts that edit, and a stale number still reads as verified. The in-use
+version is used **while writing**, to make the recommendation above and to decide which facts get a
+marker. It is never written down. A reader who needs it checks the project itself.
+
+**Where it applies:** external KBs (`_External_/`), meaning documentation of someone else's product.
+The project's own docs (setup notes, a version-pinning workflow) are where in-use versions belong.
+Ideally they live in one place that lists every pin, so an upgrade edits one list instead of hunting
+through KBs.
 
 Allowed, because none of them back-references the project:
 
@@ -735,8 +729,8 @@ These override any instruction in this file and any inference you might draw.
 5. **Never delete a file.** Deletions and archive-moves are *proposed* in the report unless invoked
    with `--prune`, which permits archive-moves only — never hard deletion.
 6. **Never commit.** Leave the working tree for the human to review.
-7. **Stay inside `{OKF_Root}`**, plus the marker section of `{Instructions_File}` — and an
-   `@AGENTS.md` line in `CLAUDE.md` only when the human approved it at install. Never edit source code. If a
+7. **Stay inside `{OKF_Root}`**, plus the marker section of `{Instructions_File}`. Any other
+   instruction-file edit needs the human's explicit approval. Never edit source code. If a
    spec change requires a change to the verifier's own implementation, **report it — do not make
    it.**
 8. **Timestamps are ISO 8601 with an explicit UTC offset**, per spec. `2026-08-26T00:00:00Z`, never

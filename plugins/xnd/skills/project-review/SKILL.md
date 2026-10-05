@@ -54,14 +54,15 @@ area — the human has already signalled they know what they are asking for.
 
 ## Step 1 — Resolve configuration
 
-1. Read the project's **instruction files** — `AGENTS.md` first, then `CLAUDE.md`; both when both
-   exist, following their `@` imports. Note which reached your context. Claude Code reads `AGENTS.md`
-   only when no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` shadows it, unless that
-   `CLAUDE.md` imports it (`@AGENTS.md`) or is a symlink to it. A shadowed `AGENTS.md` is a
-   [dimension 7](#core-dimensions) finding: every rule in it goes unread by Claude, silently.
-   **Likewise an `@` import whose target is not in your context** — check before you read the target,
-   or the check proves nothing. The usual cause is a `_Name_` segment in the path, which Markdown
-   parses as emphasis; no escape fixes it.
+1. Read the project's **instruction files**, `AGENTS.md` and `CLAUDE.md`, whichever exist, following
+   their `@` imports. Note which ones reached your context. Judge them against
+   [How agents load the instruction files](../kb-check-setup/SKILL.md#how-agents-load-the-instruction-files):
+   an instruction file Claude Code does not load is a [dimension 7](#core-dimensions) finding, because
+   every rule in it goes unread by Claude, silently. Which file a project uses is its own choice and
+   not a finding.
+   **An `@` import whose target is not in your context is the same kind of finding.** Check before
+   you read the target, or the check proves nothing. The usual cause is a `_Name_` segment in the
+   path, which Markdown parses as emphasis; no escape fixes it.
 2. Read the bundle config — **`{Metadata_Dir}/_Configuration_/Configuration.yaml`**, the file
    `/xnd:kb-update` writes. **Resolve it tolerantly**: match the directory and filename
    case-insensitively and accept `.yaml` or `.yml`, because the project's own naming convention
@@ -220,6 +221,12 @@ Always applicable, in any project:
    naming file by file), *verification provenance* (which KBs have no `log.md`, which admit never
    having been re-verified, how old the newest entry is), *declared horizons* (`stale_after` dates
    already passed), and *coverage* (dependencies with no KB; KBs for things no longer used).
+
+   Also cover *project back-references*: KB text that states the project's own installed, pinned,
+   bundled or deployed version ("the installed binary is …", "the repo pins …"). `kb-update` forbids
+   this, because keeping such a number true costs a KB edit on every upgrade, and nothing prompts that
+   edit. Name each one, file and line. The comparison *you* make between a KB's documented version and
+   the project's pins is the review's job; the KB must not carry it. Dated `log.md` entries are exempt.
 
    **Rank by blast radius, not age.** Where the instruction file makes a KB mandatory reading,
    staleness is a live hazard because an agent is *instructed* to trust it. Staleness in a KB for

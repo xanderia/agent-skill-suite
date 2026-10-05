@@ -5,8 +5,18 @@ what the plugin *does* is recorded here.
 
 ## 0.9.0 — 2026-10-05
 
-**`AGENTS.md` support, and a fix for a base prompt that never loaded.** Run `/xnd:kb-update` after
-upgrading: Phase 0 migrates an affected install by itself and says so first.
+**`AGENTS.md` support, a read-only setup check, and a fix for a base prompt that never loaded.** Run
+`/xnd:kb-check-setup` to see whether you are affected, then `/xnd:kb-update` to repair: its Phase 0
+migrates an affected install by itself and says so first.
+
+- **New skill `/xnd:kb-check-setup`.** It answers one question: is the installation sound, and is it
+  reaching this agent? It covers which instruction file holds the anchor, whether Claude Code loads
+  that file, whether the base prompt actually reached context, import-path hazards, config paths, and
+  base-prompt drift. It **changes nothing**. Its frontmatter `disallowed-tools` removes Edit, Write,
+  Bash, web access, subagents and other skills while it runs, so being read-only is enforced by the
+  harness, not just requested. It runs inline rather than forked, because the decisive check
+  inspects the session's own context, and a forked subagent would not have that context. It reports
+  what would fix each finding and leaves the decision to the human or their agent.
 
 - **🔴 Fixed: every anchored install since 0.3.0 imported nothing.** The default base-prompt home was
   `{Metadata_Dir}/_Workflows_/knowledge-base/`, and an `@` import cannot pass through a `_Name_`
@@ -35,31 +45,35 @@ upgrading: Phase 0 migrates an affected install by itself and says so first.
   mechanism" was wrong. The kebab-case exception it justified is gone, so the user's naming
   convention applies to these names too. `layout.base_prompt` stores the real path; spaces are
   escaped only on the import line and written as `%20` in the link.
-- **New `## Instruction file` section: `AGENTS.md` first.** The three skills used to disagree:
-  `kb-update` read `CLAUDE.md` first, `plugin-uninstall` read only `CLAUDE.md`, and `project-review`
-  read either. On a project whose `CLAUDE.md` is just `@AGENTS.md`, `kb-update` Step 0, followed
-  literally, found no marker and went to **Install**, re-installing over a working setup. All three
-  now:
-  1. read both files from disk, treating a `CLAUDE.md` symlinked to `AGENTS.md` as one file;
-  2. let an existing marker win, never moving a working anchor silently;
-  3. otherwise choose `AGENTS.md`, then `CLAUDE.md`, and create `AGENTS.md` if neither exists;
-  4. **check reachability.** Claude Code reads `AGENTS.md` only when no `CLAUDE.md`,
-     `.claude/CLAUDE.md` or `CLAUDE.local.md` shadows it, unless that `CLAUDE.md` imports or symlinks
-     it. In that case install asks (new question 7: add `@AGENTS.md` to `CLAUDE.md` *(recommended)*,
-     or anchor in `CLAUDE.md`), and maintain only reports.
+- **`AGENTS.md` and `CLAUDE.md` are both supported, and the plugin takes no side.** The three skills
+  used to disagree: `kb-update` read `CLAUDE.md` first, `plugin-uninstall` read only `CLAUDE.md`, and
+  `project-review` read either. On a project whose `CLAUDE.md` is just `@AGENTS.md`, `kb-update`
+  Step 0, followed literally, found no marker and went to **Install**, re-installing over a working
+  setup. Now:
+  - all skills read both files from disk, and an existing anchor stays where it is;
+  - for a new install, the user's agent chooses. The facts it needs are in one place: a table of
+    what Claude Code loads in each combination of files, including when a `CLAUDE.md` hides an
+    `AGENTS.md`. That section lives in `kb-check-setup`, and the other skills link to it;
+  - the one hard requirement is that Claude Code loads the anchor. Editing another instruction file
+    to achieve that, such as adding `@AGENTS.md` to `CLAUDE.md`, needs the human's approval.
 - **The anchor links the base prompt as well as importing it.** Most non-Claude agents reading
   `AGENTS.md` do not expand `@` imports. The separate "host without `@` imports" fallback is gone,
   because every anchor now carries the link. Phase 0 adds it to existing anchors.
 - **`plugin-uninstall` leaves `@AGENTS.md` in `CLAUDE.md` alone.** It is the standard shim and may
   predate the plugin.
-- **`project-review` checks** for a shadowed `AGENTS.md` and for any `@` import whose target never
-  reached context, and files both under dimension 7.
+- **`project-review` reports** an instruction file Claude Code does not load, and any `@` import whose
+  target never reached context, both under dimension 7. Which file a project uses is not a finding.
 - **`kb-update`: an external KB never names the project's own versions.** This reverses 0.6.0, which
   wrote disagreement between the in-use sources (binary, pin, container tag) into the KB as a gotcha.
   The in-use version still drives the recommendation and decides which facts get a marker. It is no
   longer written down; disagreement now goes to the human. Still allowed: the documented upstream
   version, upstream markers (`[1.4]`), and dated `log.md` history. The banner names only the
-  documented version. Existing KBs are not migrated automatically.
+  documented version. The rule applies to external KBs only, and the stated reason is maintenance
+  overhead: every upgrade would need a KB edit that nothing prompts. In-use versions belong in the
+  project's own docs, ideally one list of every pin.
+  - The **install template** writes the rule into every new base prompt.
+  - **Phase 3** strips existing back-references as it verifies each KB.
+  - **`project-review` dimension 9** names any it finds, file and line.
 - Fixed wording left over from 0.3.0: install questions 2 and 5 and the Verifier contract wrote rules
   "into the `CLAUDE.md` section", but those rules have lived in the base prompt since the anchor shape.
 - `README.md` and `MAINTAINING.md` described the pre-0.5.0 `okf_*` frontmatter configuration for four
