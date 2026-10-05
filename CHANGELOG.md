@@ -3,6 +3,68 @@
 The skills are prompts, so behaviour changes do not show up as code diffs. Everything that changes
 what the plugin *does* is recorded here.
 
+## 0.9.0 — 2026-10-05
+
+**`AGENTS.md` support, and a fix for a base prompt that never loaded.** Run `/xnd:kb-update` after
+upgrading: Phase 0 migrates an affected install by itself and says so first.
+
+- **🔴 Fixed: every anchored install since 0.3.0 imported nothing.** The default base-prompt home was
+  `{Metadata_Dir}/_Workflows_/knowledge-base/`, and an `@` import cannot pass through a `_Name_`
+  segment. The parser reads the line as Markdown, `/_Workflows_/` becomes emphasis, and the path
+  splits. Every session got the anchor's one sentence and none of the bundle's rules, with no error
+  shown anywhere. Escaping does not help: `\_Workflows\_` and `<…>` fail too. Measured on XANDERIA
+  with a headless probe (`claude -p --tools ""`, asking for a value only the base prompt carries):
+  `NONE` before, `62432a095` after. The probe table, Claude Code 2.1.289:
+
+  | Import | Loads |
+  | :--- | :--- |
+  | `@plain/a.md` · `@Dir/snake_case/h.md` | yes |
+  | `@Sp\ ace/d.md` · `@Notes/Knowledge\ Base/Base\ Prompt.md` | yes |
+  | `@Dir/_Mid_/c.md` · `@_Under_/b.md` | **no** |
+  | `@Dir/\_Mid\_/f.md` · `@<Dir/_Mid_/k.md>` | **no** |
+
+  - The base prompt now lives in **`{Metadata_Dir}/Knowledge Base/`**, cased per the project's
+    convention. **Phase 0 step 5** moves an existing install there, along with its index, links,
+    config and anchor. `_Workflows_/` keeps `Review Prompt.md`, which is read on demand and never
+    imported.
+  - **Phase 0 step 2 checks that the base prompt actually loaded.** Before reading the file, it looks
+    for the `## Bundle Configuration` table in its own context. That self-test would have caught this
+    on day one.
+- **Spaces in import paths are now allowed.** Escape each one with a backslash
+  (`@Notes/Knowledge\ Base/Base\ Prompt.md`). The 0.3.0 claim that `@` imports have "no escaping
+  mechanism" was wrong. The kebab-case exception it justified is gone, so the user's naming
+  convention applies to these names too. `layout.base_prompt` stores the real path; spaces are
+  escaped only on the import line and written as `%20` in the link.
+- **New `## Instruction file` section: `AGENTS.md` first.** The three skills used to disagree:
+  `kb-update` read `CLAUDE.md` first, `plugin-uninstall` read only `CLAUDE.md`, and `project-review`
+  read either. On a project whose `CLAUDE.md` is just `@AGENTS.md`, `kb-update` Step 0, followed
+  literally, found no marker and went to **Install**, re-installing over a working setup. All three
+  now:
+  1. read both files from disk, treating a `CLAUDE.md` symlinked to `AGENTS.md` as one file;
+  2. let an existing marker win, never moving a working anchor silently;
+  3. otherwise choose `AGENTS.md`, then `CLAUDE.md`, and create `AGENTS.md` if neither exists;
+  4. **check reachability.** Claude Code reads `AGENTS.md` only when no `CLAUDE.md`,
+     `.claude/CLAUDE.md` or `CLAUDE.local.md` shadows it, unless that `CLAUDE.md` imports or symlinks
+     it. In that case install asks (new question 7: add `@AGENTS.md` to `CLAUDE.md` *(recommended)*,
+     or anchor in `CLAUDE.md`), and maintain only reports.
+- **The anchor links the base prompt as well as importing it.** Most non-Claude agents reading
+  `AGENTS.md` do not expand `@` imports. The separate "host without `@` imports" fallback is gone,
+  because every anchor now carries the link. Phase 0 adds it to existing anchors.
+- **`plugin-uninstall` leaves `@AGENTS.md` in `CLAUDE.md` alone.** It is the standard shim and may
+  predate the plugin.
+- **`project-review` checks** for a shadowed `AGENTS.md` and for any `@` import whose target never
+  reached context, and files both under dimension 7.
+- **`kb-update`: an external KB never names the project's own versions.** This reverses 0.6.0, which
+  wrote disagreement between the in-use sources (binary, pin, container tag) into the KB as a gotcha.
+  The in-use version still drives the recommendation and decides which facts get a marker. It is no
+  longer written down; disagreement now goes to the human. Still allowed: the documented upstream
+  version, upstream markers (`[1.4]`), and dated `log.md` history. The banner names only the
+  documented version. Existing KBs are not migrated automatically.
+- Fixed wording left over from 0.3.0: install questions 2 and 5 and the Verifier contract wrote rules
+  "into the `CLAUDE.md` section", but those rules have lived in the base prompt since the anchor shape.
+- `README.md` and `MAINTAINING.md` described the pre-0.5.0 `okf_*` frontmatter configuration for four
+  releases; both now describe `Configuration.yaml`.
+
 ## 0.8.0 — 2026-09-03
 
 **Every skill states its version; one skill checks for drift.** Previously the version lived in

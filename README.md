@@ -45,20 +45,29 @@ again.** Every run after that just does the work and hands you a short, readable
 
 Already using OKF? It detects what you have and adopts it rather than overwriting.
 
+**Works with `AGENTS.md` or `CLAUDE.md`.** The setup adds a short section to your project's
+instruction file, pointing at one generated rules file, and it prefers `AGENTS.md`, which every
+coding agent reads. If you also have a `CLAUDE.md` that would hide your `AGENTS.md` from Claude, it
+asks before changing anything.
+
 ## How it adapts to your project
 
-Nothing is hardcoded. Your answers live in your metadata directory's `index.md` frontmatter — the
-location the OKF spec itself recommends — so the skills read your project's rules rather than
-imposing anyone else's.
+Nothing is hardcoded. Your answers live in one commented file,
+`<metadata dir>/_Configuration_/Configuration.yaml`. The skills read your project's rules from there
+rather than imposing anyone else's, and you're welcome to edit it by hand: the next run picks up the
+change and regenerates everything derived from it.
 
 Two settings do most of the work:
 
-- **`okf_root`** — what belongs to the knowledge base. Often `/`.
-- **`okf_metadata_dir`** — where configuration, plans, reference docs and review reports live.
+- **`layout.root`** — what belongs to the knowledge base. Often `/`.
+- **`layout.metadata_dir`** — where configuration, plans, reference docs and review reports live.
 
 They're independent, which is what makes the same plugin fit very different projects. A codebase
 usually keeps its knowledge in a `Notes/` folder and sets both there. A writing project sets
-`okf_root: "/"` — because *everything* is the knowledge — while keeping `Notes/` for the machinery.
+`root: "/"` (because *everything* is the knowledge) while keeping `Notes/` for the machinery.
+
+Your naming convention holds everywhere, including the generated rules file: `Knowledge Base/`
+stays `Knowledge Base/` if that's how you name things.
 
 `/xnd:project-review` reads one more file, `Review Prompt.md`, where you declare what a good review
 looks like *for you*: which dimensions matter, what order to read things in, which conventions to

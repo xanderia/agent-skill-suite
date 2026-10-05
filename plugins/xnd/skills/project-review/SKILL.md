@@ -54,7 +54,14 @@ area — the human has already signalled they know what they are asking for.
 
 ## Step 1 — Resolve configuration
 
-1. Read `CLAUDE.md` (or `AGENTS.md`).
+1. Read the project's **instruction files** — `AGENTS.md` first, then `CLAUDE.md`; both when both
+   exist, following their `@` imports. Note which reached your context. Claude Code reads `AGENTS.md`
+   only when no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` shadows it, unless that
+   `CLAUDE.md` imports it (`@AGENTS.md`) or is a symlink to it. A shadowed `AGENTS.md` is a
+   [dimension 7](#core-dimensions) finding: every rule in it goes unread by Claude, silently.
+   **Likewise an `@` import whose target is not in your context** — check before you read the target,
+   or the check proves nothing. The usual cause is a `_Name_` segment in the path, which Markdown
+   parses as emphasis; no escape fixes it.
 2. Read the bundle config — **`{Metadata_Dir}/_Configuration_/Configuration.yaml`**, the file
    `/xnd:kb-update` writes. **Resolve it tolerantly**: match the directory and filename
    case-insensitively and accept `.yaml` or `.yml`, because the project's own naming convention
@@ -90,7 +97,7 @@ formed from code alone.
 
 Do not work from a hardcoded file list. **Walk the bundle:**
 
-1. `CLAUDE.md` — confirm it is in context.
+1. The instruction files from Step 1 — confirm what actually reached your context.
 2. `{Metadata_Dir}/index.md` — the bundle map. Use it to find files a fixed list would miss.
 3. Follow the index depth-first: root concepts, then area overviews, then everything beneath them.
 4. **External KBs** — `index.md` + `gotchas.md` + `log.md` for each. Chapter files only if a concern
@@ -214,9 +221,9 @@ Always applicable, in any project:
    having been re-verified, how old the newest entry is), *declared horizons* (`stale_after` dates
    already passed), and *coverage* (dependencies with no KB; KBs for things no longer used).
 
-   **Rank by blast radius, not age.** Where `CLAUDE.md` makes a KB mandatory reading, staleness is a
-   live hazard because an agent is *instructed* to trust it. Staleness in a KB for unadopted tech is
-   merely untidy.
+   **Rank by blast radius, not age.** Where the instruction file makes a KB mandatory reading,
+   staleness is a live hazard because an agent is *instructed* to trust it. Staleness in a KB for
+   unadopted tech is merely untidy.
 
    **State the confidence of each claim.** Version drift read off a lockfile is a fact; "upstream has
    probably changed since April" is an inference from a date and must be labelled as one. Offline you

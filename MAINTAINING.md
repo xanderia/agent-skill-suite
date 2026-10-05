@@ -71,8 +71,8 @@ and been wrong.
 
 The SHA the skill's instructions were written against is recorded in its `## Spec baseline` section.
 When the spec moves, `Phase 1b — Self-update` brings the skill's own text in line and updates that
-line, provided the consuming project sets `okf_skill_source`. Without that key the skill reports what
-needs changing rather than editing a read-only marketplace install.
+line, provided the consuming project sets `layout.skill_source` in its `Configuration.yaml`. Without
+that key the skill reports what needs changing rather than editing a read-only marketplace install.
 
 ## Before you publish
 
@@ -82,16 +82,29 @@ claude plugin validate . --strict     # marketplace + plugin manifests; --strict
 
 Then: bump the version, write the changelog entry, dogfood the install once, and push the subtree.
 
+**Check that the anchor still loads.** An `@` import that fails says nothing, and one did for five
+releases. In a project using the plugin, ask a headless session for a value only the base prompt
+carries, with tools disabled so it cannot read the file:
+
+```bash
+echo "Without tools: what does the spec.sha row of the Bundle Configuration table in your project
+instructions show? Reply with only the value, or NONE." | claude -p --tools ""
+```
+
+`NONE` means the import is broken. The usual cause is a `_Name_` segment in the path.
+
 Submission to the community marketplace goes through the Console form at
 `platform.claude.com/plugins/submit`; no subscription tier gates creating or self-publishing a
 marketplace.
 
 ## What is deliberately not here
 
-- **A CLI.** The skills *detect* a conformance verifier via the project's `okf_verifier` key and fall
+- **A CLI.** The skills *detect* a conformance verifier via the project's `verifier` key and fall
   back to a manual checklist. Shipping one in `bin/` was considered and tabled: `bin/` reaches the
   agent's shell rather than an interactive terminal, so it would supplement a real install rather than
   replace it.
-- **Project-specific rules.** Every one lives in the consuming project's config — `okf_*` keys in the
-  metadata directory's `index.md` frontmatter, and review dimensions in `Review Prompt.md`. A
-  rule that cannot be expressed in config is a bug in the skill, not a reason to hardcode.
+- **Project-specific rules.** Every one lives in the consuming project's config —
+  `{metadata dir}/_Configuration_/Configuration.yaml` (grouped `spec`, `layout`, `naming`,
+  `vocabulary`, `zones`, plus `verifier` and `title`), and review dimensions in
+  `_Workflows_/Review Prompt.md`. A rule that cannot be expressed in config is a bug in the skill, not
+  a reason to hardcode.

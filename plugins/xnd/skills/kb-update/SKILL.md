@@ -47,20 +47,46 @@ here would be a second one, and it would drift — the same reasoning that keeps
 `Configuration.yaml`.
 
 
-## Step 0 — Resolve configuration
+## Instruction file
 
-1. **Read `CLAUDE.md` from disk** (or `AGENTS.md` if no `CLAUDE.md`) with the Read tool, and look for
-   the install marker:
+The anchor lives in the project's agent instruction file — `AGENTS.md` or `CLAUDE.md`. This file
+calls the one in use `{Instructions_File}` and resolves it the same way on every run:
+
+1. **Read both from disk** — root `AGENTS.md` and root `CLAUDE.md`, whichever exist — with the Read
+   tool, and look for the install marker:
 
    ```
    <!-- okf:installed -->
    ```
 
-   > ⚠️ **Read the file; do not trust context.** Block-level HTML comments are stripped from a
-   > `CLAUDE.md` before it reaches the model, so the marker is invisible in your context even when it
-   > is present on disk. Deciding from context alone yields a false negative and a destructive
-   > re-install over a working setup. The `@…/base-prompt.md` import line *is* visible in context —
-   > which is why it doubles as the marker.
+   A `CLAUDE.md` that is a symlink to `AGENTS.md` is one file: treat it as `AGENTS.md`, since Edit and
+   Write refuse to write through a symlink.
+2. **An existing marker wins.** The file holding it is `{Instructions_File}`, even when it is the
+   non-preferred one. Never move a working anchor silently; if it sits in `CLAUDE.md` while an
+   `AGENTS.md` exists, suggest the move under *What needs you*. Both files carrying a marker is
+   drift — report it and ask which to keep.
+3. **No marker → `AGENTS.md` first.** `AGENTS.md` if it exists, else `CLAUDE.md` if it exists, else
+   create `AGENTS.md`. It is the file every coding agent reads; `CLAUDE.md` reaches only Claude.
+4. **Check that Claude Code will load it.** Claude Code reads `AGENTS.md` only when no `CLAUDE.md`,
+   `.claude/CLAUDE.md` or `CLAUDE.local.md` shadows it — unless that `CLAUDE.md` imports it
+   (`@AGENTS.md`) or is a symlink to it. An anchor in a shadowed `AGENTS.md` reaches every other agent
+   and silently never reaches Claude.
+   - **On install**, ask: **add `@AGENTS.md` as the first line of `CLAUDE.md` (recommended)**, or put
+     the anchor in `CLAUDE.md` instead.
+   - **On maintain**, report it under *What needs you*. Never edit `CLAUDE.md` unasked.
+
+   The same `@AGENTS.md` line is the fix for hosts that cannot load `AGENTS.md` natively.
+
+> ⚠️ **Read the files; do not trust context.** Block-level HTML comments are stripped from a
+> `CLAUDE.md` — and from whatever it imports — before it reaches the model, so the marker is
+> invisible in your context even when it is present on disk. Deciding from context alone yields a
+> false negative and a destructive re-install over a working setup. The `@` import line of the base
+> prompt *is* visible in context — which is why it doubles as the marker.
+
+
+## Step 0 — Resolve configuration
+
+1. **Resolve `{Instructions_File}`** per [Instruction file](#instruction-file).
 
    - **Marker absent** → run [Install](#install-flow-first-run-only).
    - **Marker present** → run [Maintain](#maintain-flow), silently, without re-asking anything.
@@ -72,7 +98,7 @@ here would be a second one, and it would drift — the same reasoning that keeps
    | `spec.sha` | Last-seen upstream spec commit — **drives drift detection** |
    | `layout.root` | What is *in* the bundle (may be `/`) |
    | `layout.metadata_dir` | Where config, plans, external KBs live |
-   | `layout.base_prompt` | The always-loaded prompt `CLAUDE.md` imports |
+   | `layout.base_prompt` | The always-loaded prompt `{Instructions_File}` imports — the real, unescaped path |
    | `layout.review_prompt` | The review contract `/xnd:project-review` reads |
    | `layout.skill_source` | Path to this suite's own source, when the project vendors it — enables [Phase 1b](#phase-1b--self-update). Absent → report needed changes, never self-edit |
    | `naming.files` / `naming.folders` | Case convention for new files and folders |
@@ -131,7 +157,7 @@ Offer, each with a rendered example:
 
 If the project has existing files, **count them first and recommend what is already dominant.**
 
-Regardless of the answer, two exceptions always hold and must be stated in the CLAUDE.md section:
+Regardless of the answer, two exceptions always hold and must be stated in the base prompt:
 names fixed by a library or standard (`README.md`, `SKILL.md`, `index.md`, `log.md`,
 `plugin.json`), and names that would otherwise be awkward to type or quote in a shell.
 
@@ -155,7 +181,7 @@ Either way a hard floor always applies and is never configurable:
 Ask whether a conformance CLI is available (for XANDERIA: `xnd notes verify`).
 
 - **Yes** → record the exact command in `verifier`; run it at the end of every maintain run.
-- **No** → set `verifier: null` and write into the CLAUDE.md section that OKF adherence must be
+- **No** → set `verifier: null` and write into the base prompt that OKF adherence must be
   **checked manually**, listing what to check: frontmatter presence, `type` validity, index coverage,
   relative-link resolution.
 
@@ -165,22 +191,36 @@ Ask whether a conformance CLI is available (for XANDERIA: `xnd notes verify`).
 - `{Metadata_Dir}/_Plans_` — active plans and task lists
 - `{Metadata_Dir}/_Plans_/_ReviewReports_` — output of `/xnd:project-review`
 - `{Metadata_Dir}/_Plans_/_Archive_` — superseded plans
-- `{Metadata_Dir}/_Workflows_/knowledge-base` — holds the base prompt `CLAUDE.md` imports
-  (kebab-case regardless of `naming.folders`; see [Anchor constraints](#anchor-constraints))
+- `{Metadata_Dir}/Knowledge Base` — named per `naming.folders` (`knowledge-base`, `KnowledgeBase`, …);
+  holds the base prompt `{Instructions_File}` imports. **Never inside a `_Name_` marker directory** —
+  an `@` import cannot pass through one; see [Anchor constraints](#anchor-constraints)
+- `{Metadata_Dir}/_Workflows_` — holds `Review Prompt.md`, which is read on demand, never imported
 - `{Metadata_Dir}/_Configuration_` — holds `Configuration.yaml`; **not optional**, the rest of the
   skill reads it
 
 Each created folder gets an `index.md`.
 
-### 7. Write the install artifacts
+### 7. Instruction file — only when Claude Code would not see it
+
+Skip this unless [Instruction file](#instruction-file) rule 4 applies: an `AGENTS.md` is the
+preferred target but a `CLAUDE.md` shadows it without importing it. Then ask:
+
+- **Add `@AGENTS.md` as the first line of `CLAUDE.md` (recommended)** — one shared file for every
+  agent; Claude reads `AGENTS.md` first, then the rest of `CLAUDE.md`. Say that this also pulls the
+  whole of `AGENTS.md` into Claude's context, which matters if the two files overlap.
+- **Anchor in `CLAUDE.md` instead** — leaves `AGENTS.md` untouched; other agents will not see the
+  base prompt.
+
+### 8. Write the install artifacts
 
 1. **`{Metadata_Dir}/_Configuration_/Configuration.yaml`** — every answer above, grouped under
    `spec`, `layout`, `naming`, `vocabulary`, `zones`, plus `verifier` and `title`. Write it with
    comments: it is meant to be read and edited by a human. Put `okf_version` in the bundle-root
    `index.md` frontmatter instead, per OKF §12 — and nowhere else.
-2. **The base prompt** at `layout.base_prompt` — a normal concept document (full frontmatter, listed in
-   its directory's `index.md`) carrying the resolved config, the verifier instruction, the naming
-   conventions, the immutable-zone and archiving rules, and this rule:
+2. **The base prompt** at `layout.base_prompt` — `{Metadata_Dir}/Knowledge Base/Base Prompt.md`, both
+   names cased per `naming.folders` and `naming.files`. A normal concept document (full frontmatter,
+   listed in its directory's `index.md`) carrying the resolved config, the verifier instruction, the
+   naming conventions, the immutable-zone and archiving rules, and this rule:
 
    > **Adding a knowledge base.** When asked to add a KB, ask **two** questions before writing
    > anything, each with one option pre-marked `(recommended)`:
@@ -190,19 +230,26 @@ Each created folder gets an `index.md`.
    > 2. **Version** — which release to document. Establish *both* the version(s) the project actually
    >    uses and the newest one upstream publishes, then ask. Never pin silently.
 
-3. **The anchor** in `CLAUDE.md` — a short section, nothing more:
+3. **The anchor** in `{Instructions_File}` — a short section, nothing more:
 
    ```markdown
    # {title}
 
    <!-- okf:installed — managed by /xnd:kb-update; edit the imported file, not this block. -->
 
-   The operating instructions for the `{Metadata_Dir}/` bundle are imported here:
+   The operating instructions for the `{Metadata_Dir}/` bundle live in
+   [{base prompt filename}]({layout.base_prompt, spaces as %20}) — read it before working in the
+   bundle. Claude Code imports it here:
 
-   @{layout.base_prompt}
+   @{layout.base_prompt, spaces escaped as "\ "}
    ```
 
-   See [Anchor constraints](#anchor-constraints) before writing it — the import path has rules.
+   The link is for agents that do not expand `@` imports — most non-Claude tools reading `AGENTS.md`;
+   the import is for Claude Code. Keep both. See [Anchor constraints](#anchor-constraints) before
+   writing it — the import path has rules.
+
+   If [Instruction file](#instruction-file) rule 4 applies and the human chose the `@AGENTS.md` line,
+   add it as the first line of `CLAUDE.md`.
 
 4. A starter `{Metadata_Dir}/_Workflows_/Review Prompt.md` for `/xnd:project-review` to consume.
 5. Vendor the spec (see [Phase 1](#phase-1--spec-drift)).
@@ -216,27 +263,44 @@ Then run the maintain flow.
 
 Runs first on every maintain run. It is cheap, and everything after it assumes the install is sound.
 
-1. **Read `CLAUDE.md` from disk** (see the warning in [Step 0](#step-0--resolve-configuration) — the
-   marker is invisible from context).
-2. **Identify the shape:**
-   - **Anchored** (current) — a heading, a marker comment, one sentence, and an
-     `@…/base-prompt.md` import line.
+1. **Resolve `{Instructions_File}`** per [Instruction file](#instruction-file) — from disk; the marker
+   is invisible from context.
+2. **Confirm the base prompt actually loaded — before you read its file**, or the check proves
+   nothing. Its `## Bundle Configuration` table should already be in your context, expanded from the
+   import at launch. If it is not, the import is broken and every session has been running without
+   the bundle's rules — the worst failure this skill has, and invisible from inside a session that
+   never looks. Find the cause, fix what step 5 can fix, and report the rest under *What needs you*.
+   Usual causes, most likely first: a `_Name_` segment in the path (step 5), an unescaped or quoted
+   space, an `AGENTS.md` shadowed by `CLAUDE.md` ([rule 4](#instruction-file)), a missing target.
+3. **Identify the shape:**
+   - **Anchored** (current) — a heading, a marker comment, a sentence linking the base prompt, and
+     an `@` import line of `layout.base_prompt`.
    - **Inline** (legacy) — the section carries the full instruction text directly.
    - **Absent** — run [Install](#install-flow-first-run-only) instead.
-3. **Migrate inline → anchored.** Move the section body verbatim into `layout.base_prompt`; add
+4. **Migrate inline → anchored.** Move the section body verbatim into `layout.base_prompt`; add
    frontmatter (a `type` from `vocabulary.types`, a `description`, `generated`); **rebase every
-   relative link in the moved text** — the content dropped several directories, so a root-relative
-   `Notes/x.md` becomes `../../x.md`, and every link that resolved from the repo root needs one `../`
-   per level; list it in its directory's `index.md`; then replace the `CLAUDE.md` section with the
-   anchor. Report the migration — it rewrites a file the human owns.
-4. **Migrate frontmatter config → `Configuration.yaml`.** A bundle whose root `index.md` still carries
+   relative link in the moved text** — the content moved down into the bundle, so every link that
+   resolved from the repo root needs one `../` per level (`Notes/x.md` becomes `../x.md` from
+   `Notes/Knowledge Base/`); list it in its directory's `index.md`; then replace the
+   `{Instructions_File}` section with the anchor. Report the migration — it rewrites a file the human
+   owns.
+5. **Migrate an unloadable base prompt.** If `layout.base_prompt` contains a `_Name_` segment — any
+   path segment wrapped in `_` or `*`, such as the `{Metadata_Dir}/_Workflows_/knowledge-base/` that
+   v0.3.0–v0.8.0 installed by default — the import has **never loaded**
+   ([Anchor constraints](#anchor-constraints)). `git mv` the base prompt and its `index.md` to
+   `{Metadata_Dir}/Knowledge Base/`, cased per `naming.folders`, keeping the filename; rebase its
+   relative links; update `layout.base_prompt`, the anchor's link and import, and every index that
+   listed the old path; drop any `naming.reserved` / `reserved_folders` entry that existed only to
+   exempt the old path. Report it first and plainly — the human has been missing these rules in every
+   session since install.
+6. **Migrate frontmatter config → `Configuration.yaml`.** A bundle whose root `index.md` still carries
    `okf_*` keys beyond `okf_version` predates the central config file. Move every producer-defined key
    into `{Metadata_Dir}/_Configuration_/Configuration.yaml` under its new group (`spec`, `layout`,
    `naming`, `vocabulary`, `zones`), **leave `okf_version` where it is** (OKF §12), scaffold
    `_Configuration_/index.md`, and report the migration. Never leave a key in both places.
-5. **Repair the anchor** if it drifted: heading, marker comment, one-line explanation, import line,
-   and the import target actually existing.
-6. **Regenerate the base prompt from the config.** This is the step that makes hand-editing
+7. **Repair the anchor** if it drifted: heading, marker comment, the sentence with its link (spaces as
+   `%20`), the import line (spaces escaped as `\ `), and the import target actually existing.
+8. **Regenerate the base prompt from the config.** This is the step that makes hand-editing
    `Configuration.yaml` safe, so treat it as mechanical rather than a judgement call:
 
    - The base prompt's `## Bundle Configuration` table is **generated**. Render it fresh from the
@@ -251,7 +315,7 @@ Runs first on every maintain run. It is cheap, and everything after it assumes t
    A stale base prompt is the worst failure this skill has, because it is invisible: the file is
    expanded into context at launch and still *reads* like instruction while teaching the wrong rules.
    Where the project's verifier can check this (XND's does), say so in the report.
-7. **Check distribution drift** — one small fetch, and **the direction depends on `layout.skill_source`**,
+9. **Check distribution drift** — one small fetch, and **the direction depends on `layout.skill_source`**,
    which is what distinguishes a publisher from a consumer. Getting this backwards is the whole trap:
    a project that vendors the source will never have an update waiting for it, because it *is* the
    update.
@@ -272,26 +336,35 @@ Runs first on every maintain run. It is cheap, and everything after it assumes t
 
 #### Anchor constraints
 
-Four rules, each with a failure mode worth naming:
+Five rules, each with a failure mode worth naming. Every one of them fails **silently** — a broken
+import loads nothing and says nothing — which is why [Phase 0](#phase-0--verify-the-installation)
+step 2 checks the result rather than trusting the line.
 
-1. **No spaces in the import path.** `@path` has no quoting or escaping mechanism and whitespace
-   terminates the path, so `@Notes/_Workflows_/Knowledge Base/base-prompt.md` silently imports
-   nothing. The workflow directory is therefore **kebab-case even in a Title-Case project** — exactly
-   the "awkward to type or quote" exception the naming rule already carves out.
-2. **The import line is the marker.** HTML comments are stripped from context, so a comment-only
+1. **Escape every space with a backslash.** `@Notes/Knowledge\ Base/Base\ Prompt.md` imports the
+   file. Unescaped, the path ends at the first space; wrapped in quotes, nothing is imported at all.
+   `layout.base_prompt` stores the real, unescaped path — escape only when writing the import line,
+   and write spaces as `%20` in the markdown link beside it. The project's naming convention applies
+   to these names like any other; there is no kebab-case exception.
+2. **No `_Name_` segment in the path — and no escape for it.** The import parser reads the line as
+   Markdown, so `/_Workflows_/` becomes emphasis and the path splits: `@Notes/_Workflows_/x.md`
+   imports nothing, and so do `\_Workflows\_` and `<…>`. The same holds for any segment wrapped in
+   `_` or `*`. Intraword underscores (`snake_case`) are fine. Verified 2026-10-05 against Claude Code
+   2.1.289 with isolated probes. This is why the base prompt lives in `{Metadata_Dir}/Knowledge Base/`
+   and never under a marker directory such as `_Workflows_/`.
+3. **The import line is the marker.** HTML comments are stripped from context, so a comment-only
    marker is invisible to an agent that has not read the file from disk. Keep the comment for humans
    reading the file; rely on the import line for everything else.
-3. **Externalizing does not save context.** An imported file is expanded into the context window at
+4. **Externalizing does not save context.** An imported file is expanded into the context window at
    launch exactly as if it had been pasted inline. The reason to do this is **atomicity** — the skill
    owns a whole file it can regenerate, instead of surgically rewriting the human's most important
    file — not token savings. Keep the base prompt short on its own merits; if the goal is a smaller
    context, *cut* content, do not move it.
-4. **Imports resolve relative to the file containing them** and nest at most four hops. Do not chain
-   base prompts.
+5. **Imports resolve relative to the file containing them** and nest at most four hops. A
+   `CLAUDE.md` holding only `@AGENTS.md` spends one of them. Do not chain base prompts.
 
-Where the host does not support `@` imports, write the anchor with a plain relative markdown link and
-one line saying the file must be read first. The content still lives in one regenerable place; only
-the automatic loading is lost.
+Hosts that do not expand `@` imports — most non-Claude agents reading `AGENTS.md` — still find the
+base prompt through the anchor's markdown link. The content lives in one regenerable place either
+way; only the automatic loading differs.
 
 ### Phase 1 — Spec drift
 
@@ -497,8 +570,9 @@ both candidates, then ask. The two are different questions and frequently have d
 1. **What the project uses.** Read it from the evidence, not from one file: manifest ranges
    (`package.json`), resolved lockfile entries, the installed binary (`<tool> --version`), container
    base images, and any `packageManager`/`engines` pin. **Report each separately when they disagree.**
-   That disagreement is not noise to be averaged away — it is KB content, and often the most valuable
-   gotcha the KB will carry.
+   That disagreement is not noise to be averaged away. It is a real finding for the human, and the
+   input to this decision. It is **not** KB content: see
+   [The KB never names the project's versions](#the-kb-never-names-the-projects-versions).
 2. **What upstream publishes now.** A registry `latest`, a releases endpoint, or the docs site.
 
 Then ask which to document, marking one `(recommended)`:
@@ -513,16 +587,35 @@ Record the answer in `gotchas.md` `upstream:` as always. **When the documented v
 the in-use version, the KB must additionally carry both of these** — the inversion is a trap
 otherwise, because every unavailable API reads as available:
 
-* An inline marker on every fact that does not hold on the in-use version — `[1.4]`, `[v3]`,
-  whatever matches the `kind`. Unmarked content must be true for *both*.
-* A banner on the KB's root `index.md` naming both versions, stating the marker convention, and
-  saying plainly that a marked feature missing from the reader's binary means the KB is ahead of
-  them, not wrong.
+* An inline marker on every fact upstream added or changed after the in-use version — `[1.4]`,
+  `[v3]`, whatever matches the `kind`. Unmarked content must hold on the older versions too.
+* A banner on the KB's root `index.md` naming the **documented** version, stating the marker
+  convention, and saying plainly that a marked feature missing from the reader's binary means the KB
+  is ahead of them, not wrong.
 
-> **Worked example.** The XANDERIA Bun KB was re-pinned from 1.3.14 to 1.4.0 on 2026-09-03 at the
-> human's request, while the installed binary stayed at 1.3.14, the repo pinned `bun@1.3.6` and the
-> Docker base floated on `oven/bun:1`. Four versions, one KB. The `[1.4]` marker plus a root-index
-> banner is what keeps that honest and usable.
+#### The KB never names the project's versions
+
+An external KB describes **upstream**. It must not state which version the project installs, pins,
+bundles or deploys: no "the installed binary is …", no "the repo pins `tool@…`", no "the Docker tag
+resolves to …", no table of the project's version sources. Each of those changes with a package-manager
+upgrade or an image rebuild, nothing in the KB tracks it, and a stale one still reads as verified. The
+in-use version is used **while writing**, to make the recommendation above and to decide which facts
+get a marker. It is never written down. A reader who needs it checks the project itself.
+
+Allowed, because none of them back-references the project:
+
+* the documented upstream version — `gotchas.md` `upstream:` and the root banner;
+* upstream markers — `[1.4]` reads "upstream added or changed this in 1.4";
+* dated `log.md` entries, which record what was true when written rather than claim it now.
+
+A drift *between* the project's own version sources (an unenforced pin, a floating container tag) is
+a finding for the human or the project's task list, not a gotcha.
+
+> **Worked counter-example.** The XANDERIA Bun KB was re-pinned to 1.4.0 on 2026-09-03 and named four
+> project versions in its banner and first gotcha: installed binary, `packageManager` pin, Docker tag,
+> `@types`. Within a month the binary and the Docker tag had both moved to 1.4.2. The banner still
+> said "nothing in XANDERIA runs 1.4", and a prompt every session loaded repeated the stale number.
+> The `[1.4]` markers stayed correct throughout, because they describe upstream.
 
 The same question applies on a **re-pin** during [Phase 3](#phase-3--upstream-verification-external-kbs):
 if verification finds the KB pinned to a version the project no longer uses, ask before moving it.
@@ -603,7 +696,7 @@ Three rules follow:
 
 If the project's verifier does not behave this way, **report it — do not change it**: verifier source
 is project code, not skill source ([hard rule 7](#hard-rules)). Where `verifier` is `null`, write
-the same two-axis rule into the manual checklist in `CLAUDE.md`.
+the same two-axis rule into the manual checklist in the base prompt.
 
 
 ## Hard rules
@@ -642,7 +735,8 @@ These override any instruction in this file and any inference you might draw.
 5. **Never delete a file.** Deletions and archive-moves are *proposed* in the report unless invoked
    with `--prune`, which permits archive-moves only — never hard deletion.
 6. **Never commit.** Leave the working tree for the human to review.
-7. **Stay inside `{OKF_Root}`**, plus the marker section of `CLAUDE.md`. Never edit source code. If a
+7. **Stay inside `{OKF_Root}`**, plus the marker section of `{Instructions_File}` — and an
+   `@AGENTS.md` line in `CLAUDE.md` only when the human approved it at install. Never edit source code. If a
    spec change requires a change to the verifier's own implementation, **report it — do not make
    it.**
 8. **Timestamps are ISO 8601 with an explicit UTC offset**, per spec. `2026-08-26T00:00:00Z`, never

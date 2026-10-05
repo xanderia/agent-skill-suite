@@ -1,6 +1,6 @@
 ---
 name: plugin-uninstall
-description: Remove the OKF knowledge-base scaffolding this plugin installed — frontmatter, generated folders, config and the CLAUDE.md section — with a dry-run diff and per-item confirmation
+description: Remove the OKF knowledge-base scaffolding this plugin installed — frontmatter, generated folders, config and the AGENTS.md or CLAUDE.md section — with a dry-run diff and per-item confirmation
 user-invocable: true
 ---
 
@@ -47,20 +47,25 @@ and nothing more.
    `{Metadata_Dir}/index.md` frontmatter; fall back to reading it there. `okf_version` legitimately
    lives in `index.md` either way.
 
-   Then read the `<!-- okf:installed -->` marker in `CLAUDE.md`. **Read `CLAUDE.md` from disk with the
-   Read tool** — block-level HTML comments are stripped before a `CLAUDE.md` reaches the model, so
-   checking context alone reports "not installed" for a perfectly good install. The
-   `@…/base-prompt.md` import line is the visible counterpart. If neither marker nor config exists,
-   say the plugin was never installed here and stop.
+   Then find the `<!-- okf:installed -->` marker. **Read both root `AGENTS.md` and root `CLAUDE.md`
+   from disk with the Read tool**, whichever exist — the anchor may be in either, and `AGENTS.md` is
+   where `/xnd:kb-update` puts a new one. The file holding the marker is *the instruction file* for
+   the rest of this run; a `CLAUDE.md` symlinked to `AGENTS.md` is one file, edited as `AGENTS.md`.
+   Block-level HTML comments are stripped before a `CLAUDE.md` reaches the model, so checking context
+   alone reports "not installed" for a perfectly good install. The base prompt's `@` import line is
+   the visible counterpart. If neither marker nor config exists, say the plugin was never installed
+   here and stop.
 2. Check whether the working tree is clean. If it is dirty, say so and recommend committing first —
    git is the only undo.
 3. Inventory what exists:
    - concept files carrying frontmatter, grouped by folder, with counts
    - folders this plugin creates (`_Archive_`, `_Plans_`, `_Plans_/_ReviewReports_`,
-     `_Plans_/_Archive_`, `_Workflows_/knowledge-base`) and whether each holds content the human wrote
-   - the `CLAUDE.md` anchor section **and** the base prompt it imports (`layout.base_prompt`) — these are
-     one unit: removing the anchor while leaving the file orphans it, and removing the file while
-     leaving the anchor leaves a broken import in the human's `CLAUDE.md`
+     `_Plans_/_Archive_`, `_Workflows_`, and the base prompt's own folder — `Knowledge Base/` cased per
+     `naming.folders`, or `_Workflows_/knowledge-base/` on a pre-0.9.0 install) and whether each holds
+     content the human wrote
+   - the instruction file's anchor section **and** the base prompt it imports (`layout.base_prompt`) —
+     these are one unit: removing the anchor while leaving the file orphans it, and removing the file
+     while leaving the anchor leaves a broken import in the human's instruction file
    - the config itself — `_Configuration_/Configuration.yaml`, or the legacy `okf_*` frontmatter in
      `{Metadata_Dir}/index.md` on a pre-0.5.0 bundle
 
@@ -75,9 +80,14 @@ Use the AskUser tool. **Never assume "uninstall" means "remove everything".**
 2. **Folders** — which of the created folders to delete, **one entry per folder**, each stating what
    it currently contains. A folder holding the human's own plans or reports must be marked
    `(contains your work)` and must never be pre-selected.
-3. **The `CLAUDE.md` anchor and its base prompt** — remove both, or keep the base prompt as ordinary
-   documentation and drop only the import? Offer inlining the base prompt back into `CLAUDE.md` as a
-   third option: it is what a human who wants the guidance but not the plugin usually means.
+3. **The instruction-file anchor and its base prompt** — remove both, or keep the base prompt as
+   ordinary documentation and drop only the import? Offer inlining the base prompt back into the
+   instruction file as a third option: it is what a human who wants the guidance but not the plugin
+   usually means.
+
+   An `@AGENTS.md` line in `CLAUDE.md` is **not** offered for removal. `/xnd:kb-update` may have added
+   it, but it is the standard way to share one file between Claude and other agents, harmless without
+   the plugin, and it may well predate it. Leave it and say so in the report.
 4. **The config** — `_Configuration_/Configuration.yaml` (or the legacy `okf_*` frontmatter in
    `{Metadata_Dir}/index.md`) — remove, or keep so a future reinstall remembers the settings? Leave
    `okf_version` in `index.md` alone unless the whole bundle is being dismantled; it is the one
@@ -91,7 +101,7 @@ Show exactly what *would* happen before anything happens:
 - a per-file diff of frontmatter removal (or a representative sample plus a total, when it runs to
   many files)
 - the full list of folders and files that would be deleted
-- the `CLAUDE.md` diff, and the fate of the base prompt file
+- the instruction-file diff, and the fate of the base prompt file
 
 Then ask for a final confirmation. **Anything other than a clear yes stops the run.** If they decline,
 say nothing was touched and offer to narrow the selection.
@@ -116,7 +126,8 @@ Warm, joyous, plain. Then a table, because the point is that they can see exactl
 | `Notes/Client/` | Frontmatter removed | 23 files |
 | `Notes/_Plans_/` | **Kept** | Your plans are still here |
 | `Notes/_Plans_/_ReviewReports_/` | **Kept** | 2 reports preserved |
-| `CLAUDE.md` anchor | Removed | — |
+| Anchor in `AGENTS.md` (or `CLAUDE.md`) | Removed | — |
+| `@AGENTS.md` in `CLAUDE.md` | **Kept** | Standard shim; harmless without the plugin |
 | Base prompt (`layout.base_prompt`) | Removed / inlined / kept | — |
 | `Configuration.yaml` | **Kept** | A reinstall will remember your settings |
 
