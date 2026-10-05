@@ -15,7 +15,7 @@ Code/AgentSkillSuite/       ──subtree──▶   xanderia/agent-skill-suite
     marketplace.json                         .claude-plugin/marketplace.json
   plugins/xnd/                               plugins/xnd/…
     .claude-plugin/plugin.json
-    skills/{kb-check-setup, kb-update, project-review, plugin-uninstall}/SKILL.md
+    skills/{kb-version, kb-check-setup, kb-update, project-review, plugin-uninstall}/SKILL.md
     Update Migration.md                      ← ships with the plugin; kb-update walks it
   README.md · MAINTAINING.md · CHANGELOG.md
 ```

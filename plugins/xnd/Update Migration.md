@@ -64,6 +64,16 @@ Paths below use `{Metadata_Dir}` for `layout.metadata_dir`, read from `Configura
 
 ---
 
+## 0.11.0
+
+Nothing to migrate. `/xnd:kb-version` is new and needs nothing from the project.
+
+
+## 0.10.0
+
+Nothing to migrate. This file is new, and `kb-update` Phase 0 walks it from now on.
+
+
 ## 0.9.0
 
 ### 0.9.0-A · The base prompt never loads

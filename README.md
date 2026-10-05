@@ -15,6 +15,7 @@ questions the first time, then gets out of your way.
 | Skill | What it does |
 | :--- | :--- |
 | **`/xnd:kb-*`** — your knowledge base | |
+| `/xnd:kb-version` | Tells you which plugin version this session runs and where it's loaded from, plus your knowledge base's OKF spec version. Instant and read-only |
 | `/xnd:kb-check-setup` | Checks that your setup actually works: which instruction file holds it, whether your agent loads it, and whether the rules really reached the session. **Read-only**: it changes nothing and fetches nothing, and tells you what would fix each problem |
 | `/xnd:kb-update` | Sets up a knowledge base, or keeps an existing one healthy — tracks changes to the OKF spec, migrates your files to match **and updates its own instructions to match too**, re-verifies your third-party reference docs against upstream, splits files that grew too big, sharpens summaries, and regenerates every index |
 | | |

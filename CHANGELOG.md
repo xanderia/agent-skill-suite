@@ -3,6 +3,31 @@
 The skills are prompts, so behaviour changes do not show up as code diffs. Everything that changes
 what the plugin *does* is recorded here.
 
+## 0.11.0 — 2026-10-05
+
+**New skill `/xnd:kb-version`: which plugin version is this session running?**
+
+- **It answers instantly, with no tool calls.** A small script shipped beside the skill
+  (`version.sh`) reads `plugin.json`, and its output is injected into the prompt before the model
+  runs. The model only reformats it.
+- **It shows where the plugin is loaded from**, which separates a linked development checkout from a
+  marketplace copy. That was the open question when a fresh VSCodium session could not find
+  `kb-check-setup`.
+- **It shows the knowledge base's OKF spec version and `spec.sha`** when the base prompt's
+  `## Bundle Configuration` table is in context. When it isn't, the skill says no knowledge-base rules
+  reached the session and points to `/xnd:kb-check-setup`. That is why the skill sits in the `kb-`
+  namespace.
+- **It is read-only by harness.** `disallowed-tools` removes every tool, including Read and Bash.
+  `allowed-tools: Bash(sh ${CLAUDE_SKILL_DIR}/version.sh)` pre-approves only the injected script.
+- **Found while building it:** an injected `` !`command` `` goes through the normal permission check.
+  A plain `cat` of the manifest was blocked whenever the plugin lived outside the working directory,
+  which is the normal case for a marketplace install. A script bundled with the skill and
+  pre-approved by its path is the documented way around this. Calling it as `sh <script>` means the
+  executable bit does not have to survive the install. The script always exits 0, because a failing
+  injected command aborts the whole skill.
+
+Nothing to migrate: see `Update Migration.md`.
+
 ## 0.10.0 — 2026-10-05
 
 **`Update Migration.md`: what an existing installation needs, version by version.** This file says what
