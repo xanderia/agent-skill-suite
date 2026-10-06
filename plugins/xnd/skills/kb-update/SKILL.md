@@ -87,6 +87,7 @@ file calls the one holding it `{Instructions_File}`.
    | `layout.base_prompt` | The always-loaded prompt `{Instructions_File}` imports — the real, unescaped path |
    | `layout.review_prompt` | The review contract `/xnd:project-review` reads |
    | `layout.skill_source` | Path to this suite's own source, when the project vendors it — enables [Phase 1b](#phase-1b--self-update). Absent → report needed changes, never self-edit |
+   | `layout.task_list` | Optional. The project's task list; `/xnd:project-review` puts a link to each new report as its first body line. Absent → no link. Never ask for it as a missing key |
    | `naming.files` / `naming.folders` | Case convention for new files and folders |
    | `naming.dates_in_filenames` | Date format **for filenames only** — never for `log.md` headings, which OKF §7 fixes as ISO `YYYY-MM-DD` |
    | `naming.reserved` / `naming.reserved_folders` | Names that keep their given form regardless of case rules |

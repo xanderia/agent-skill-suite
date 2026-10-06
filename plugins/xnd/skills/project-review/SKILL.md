@@ -84,7 +84,8 @@ area — the human has already signalled they know what they are asking for.
 ## Restrictions
 
 - **Think, don't write code.**
-- Do not modify any source or documentation file.
+- Do not modify any source or documentation file, except for the one link in the task list
+  described in [Phase 4](#link-the-report-from-the-task-list).
 - Do not offer to implement changes.
 - The only file you create is the review report.
 - **Diagnose, do not garden.** `/xnd:kb-update` performs fixes. Frame every knowledge-base finding as
@@ -180,6 +181,21 @@ reviewer: xnd-plugin/0.7.0
 Use `xnd-plugin/unknown` if the manifest did not resolve. A `diff` run should say when the two
 reports it compares were produced by different versions, because a "regression" can just be a
 dimension that did not exist before.
+
+## Link the report from the task list
+
+When the config sets `layout.task_list`, make the new report the first line of that file's body,
+directly after its frontmatter:
+
+```markdown
+[ReviewReport-2026.10.06](_ReviewReports_/ReviewReport-2026.10.06.md)
+```
+
+- **The link only.** No heading, no sentence, no date or summary around it.
+- **One link.** If the first body line already links an older report, replace it.
+- **A relative link**, from the task list's directory to the report.
+- When `layout.task_list` is unset, skip this step. When it points at a missing file, say so in the
+  summary; never create the file.
 
 Every dimension gets **Strengths / Concerns / Recommendations**.
 

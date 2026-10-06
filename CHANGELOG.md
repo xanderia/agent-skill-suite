@@ -3,6 +3,20 @@
 The skills are prompts, so behaviour changes do not show up as code diffs. Everything that changes
 what the plugin *does* is recorded here.
 
+## 0.12.0 — 2026-10-06
+
+**`/xnd:project-review` links each new report from the task list.**
+
+- **New optional config key `layout.task_list`.** When it is set, the review writes a link to the new
+  report as the first body line of that file, directly after its frontmatter.
+- **The link only**, with no prose around it. A link to an older report in that position is
+  replaced, so the task list always points at the latest review.
+- **Unset means no change in behaviour.** A missing file is reported in the summary, never created.
+- The review's "modify no file" restriction now names this one exception. `kb-update` documents the
+  key and never asks for it as missing; `kb-check-setup` Check 4 confirms the file exists when set.
+
+Migration: `Update Migration.md` entry `0.12.0-A`.
+
 ## 0.11.0 — 2026-10-05
 
 **New skill `/xnd:kb-version`: which plugin version is this session running?**

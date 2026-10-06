@@ -147,6 +147,7 @@ Then confirm that every `layout` path exists:
   root's `index.md`.
 - `layout.base_prompt` and `layout.review_prompt` exist.
 - When `layout.skill_source` is set, `{skill_source}/.claude-plugin/plugin.json` exists.
+- When `layout.task_list` is set, the file exists.
 
 A missing required key is ❌ and names the key.
 

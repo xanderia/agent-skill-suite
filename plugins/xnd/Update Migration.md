@@ -35,6 +35,7 @@ harmless.
 
 | ID | | What | Fix by |
 | :--- | :--- | :--- | :--- |
+| [0.12.0-A](#0120-a--no-task-list-declared) | 🟢 | No task list declared | you |
 | [0.9.0-A](#090-a--the-base-prompt-never-loads) | 🔴 | The base prompt never loads | `kb-update`, automatic |
 | [0.9.0-B](#090-b--claude-code-does-not-load-the-anchor-file) | 🔴 | Claude Code does not load the anchor file | you |
 | [0.9.0-C](#090-c--a-second-install-over-a-working-one) | 🔴 | A second install over a working one | you |
@@ -63,6 +64,21 @@ Paths below use `{Metadata_Dir}` for `layout.metadata_dir`, read from `Configura
 
 
 ---
+
+## 0.12.0
+
+### 0.12.0-A · No task list declared
+
+🟢 `/xnd:project-review` now links each new report as the first body line of the project's task
+list. It only does so when `Configuration.yaml` names that file.
+
+- **Detect.** `layout.task_list` is absent from `Configuration.yaml`, and the project keeps a task
+  list (a `ToDo.md` or similar in `{Metadata_Dir}/_Plans_/`).
+- **Fix.** You: add `layout.task_list: "<path to the task list>"`. Leaving it unset keeps the old
+  behaviour; nothing breaks.
+- **Verify.** `/xnd:kb-check-setup` Check 4 finds the file. The next review report appears as the task
+  list's first body line.
+
 
 ## 0.11.0
 
